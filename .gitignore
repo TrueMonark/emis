@@ -1,0 +1,70 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env*.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# claude code local config (may contain API keys / local paths)
+.claude/
+
+# database dumps — never belong in public/ (publicly served) or in git.
+# Prisma migration SQL is the exception: it's the source of truth for
+# schema history and must be committed (see CLAUDE.md's migration rules).
+*.sql
+!apps/server/prisma/migrations/**/*.sql
+public/dump*
+
+# prisma generated client (rebuild with prisma generate)
+generated/
+*.dll.node
+*.dll.node.tmp*
+node_modules/
+dist/
+.next/
+*.log
+.env
+.DS_Store
+
+# uploaded files (school logo) — real data, lives on the server only
+apps/server/uploads/
+uploads/
+
+# Passenger restart trigger (created by scripts/restart-app.cjs)
+/tmp/

@@ -1,0 +1,57 @@
+{
+  "name": "@school/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The one API server and database for every app (school today; DEBS/PEO office app next).",
+  "exports": {
+    "./app": "./dist/app.js"
+  },
+  "scripts": {
+    "routes": "node scripts/generate-routes.mjs",
+    "dev": "npm run routes && tsx watch src/index.ts",
+    "build": "npm run routes && npm run db:generate && tsup",
+    "start": "node dist/index.js",
+    "test": "npm run routes && vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate && node scripts/fix-prisma-default-dts.cjs",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy && npm run db:generate",
+    "db:migrate:status": "prisma migrate status",
+    "db:migrate:resolve-lesson-logs": "prisma migrate resolve --applied 20260924080000_add_lesson_logs",
+    "db:seed": "prisma db seed",
+    "db:seed:permissions": "node scripts/seed-permissions.cjs",
+    "db:studio": "prisma studio",
+    "db:reset": "tsx scripts/reset-database.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^6.19.3",
+    "@prisma/client": "^6.19.3",
+    "@react-pdf/renderer": "^4.3.2",
+    "@school/shared": "*",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
+    "express": "5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "jszip": "^3.10.1",
+    "papaparse": "^5.5.3",
+    "pg": "^8.16.3",
+    "react": "19.2.3",
+    "sharp": "^0.35.3",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20",
+    "@types/papaparse": "^5.5.2",
+    "@types/pg": "^8.16.0",
+    "@types/react": "^19",
+    "prisma": "^6.19.2",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5",
+    "vitest": "^4.1.10"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@school/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Code used by both the API server and the screens: role hierarchy, grading rules, formatting, enum types, report-card PDF templates.",
+  "exports": {
+    "./report-cards": "./src/report-cards/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@prisma/client": "^6.19.3",
+    "@react-pdf/renderer": "^4.3.2",
+    "react": "19.2.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "typescript": "^5"
+  }
+}
