@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getRoleRoute } from "@/lib/auth/role-routes";
+import { MonarkDevsCredit } from "@/components/layout/monark-devs-credit";
 import { Role } from "@school/shared/types/prisma-enums";
 
 export default function LoginPage() {
@@ -65,8 +66,11 @@ export default function LoginPage() {
       // Show success message
       toast.success("Login successful! Redirecting...");
 
-      // Redirect to role-specific dashboard
-      const roleRoute = getRoleRoute(data.data.user.role as Role);
+      // Signed in with a one-time password: choose a new one first (the server refuses
+      // everything else until then). Otherwise, go to the role's dashboard.
+      const roleRoute = data.data.user.hasDefaultPassword
+        ? "/change-password"
+        : getRoleRoute(data.data.user.role as Role);
       setTimeout(() => {
         router.push(roleRoute);
       }, 500);
@@ -206,12 +210,7 @@ export default function LoginPage() {
         </Card>
 
         {/* Footer */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} School Management System. Monarch Devs,
-            Zambia.
-          </p>
-        </div>
+        <MonarkDevsCredit className="mt-6" />
       </div>
     </div>
   );

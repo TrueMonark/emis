@@ -3,6 +3,15 @@ import { ApiResponse } from "@/lib/http/api-response";
 import { logger } from "@/lib/logger/logger";
 import prisma from "@/lib/db/prisma";
 import { authRepository } from "@/features/auth/auth.repository";
+import { schoolMembershipRepository, NO_SCHOOL_MESSAGE } from "@/features/schools/schoolMembership.repository";
+import { runWithTenant } from "@/lib/db/tenant";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
+
+/**
+ * The only routes an account on a one-time password may call: see who it is, and change the
+ * password. Everything else answers 403 PASSWORD_CHANGE_REQUIRED until the password is changed.
+ */
+const ALLOWED_BEFORE_PASSWORD_CHANGE = new Set(["/api/auth/me", "/api/auth/change-password"]);
 
 /**
  * Authenticated User Context
@@ -11,8 +20,11 @@ import { authRepository } from "@/features/auth/auth.repository";
 export interface AuthUser {
   userId: string;
   email: string;
+  /** The person's role at their school (from their ACTIVE membership). */
   role: string;
   permissions: string[];
+  /** The school this request works in. Every query in the request is limited to it. */
+  schoolId: string | null;
 }
 
 /**
@@ -72,7 +84,7 @@ export function withAuth(handler: AuthenticatedRouteHandler) {
       // rebuild a chunk of client-side auth handling that doesn't exist yet.
       const dbUser = await prisma.user.findUnique({
         where: { id: decoded.userId },
-        select: { id: true, isActive: true, role: true },
+        select: { id: true, isActive: true, role: true, hasDefaultPassword: true },
       });
 
       if (!dbUser || !dbUser.isActive) {
@@ -82,24 +94,43 @@ export function withAuth(handler: AuthenticatedRouteHandler) {
         return ApiResponse.unauthorized("Account is inactive or no longer exists");
       }
 
-      const permissions = await authRepository.getUserPermissions(dbUser.id, dbUser.role);
+      const path = new URL(request.url).pathname;
 
-      // Build user context from the live DB values, not the (possibly stale) token
-      const user: AuthUser = {
-        userId: decoded.userId,
-        email: decoded.email,
-        role: dbUser.role,
-        permissions,
-      };
+      // An account on a one-time password may do nothing but choose its own password
+      // (enforced here, not just by the screens).
+      if (dbUser.hasDefaultPassword && !ALLOWED_BEFORE_PASSWORD_CHANGE.has(path)) {
+        logger.logAuth("Request refused: password change required", decoded.userId, false, { path });
+        return ApiResponse.passwordChangeRequired();
+      }
 
-      logger.logAuth("Request authenticated", user.userId, true, {
-        path: new URL(request.url).pathname,
-        role: user.role,
+      // The school this request works in: the person's ACTIVE membership. Without one (left,
+      // transferred, or a transfer not yet confirmed) they can only see who they are and
+      // change their password.
+      const membership = await schoolMembershipRepository.findActiveForUser(dbUser.id);
+      if (!membership && !ALLOWED_BEFORE_PASSWORD_CHANGE.has(path)) {
+        logger.logAuth("Request refused: no active school membership", decoded.userId, false, { path });
+        return ApiResponse.forbidden(NO_SCHOOL_MESSAGE);
+      }
+
+      const tenant = { schoolId: membership?.schoolId ?? null, userId: dbUser.id };
+      return await runWithTenant(tenant, async () => {
+        const role = membership?.role ?? dbUser.role;
+        const permissions = await authRepository.getUserPermissions(dbUser.id, role);
+
+        // Build user context from the live DB values, not the (possibly stale) token
+        const user: AuthUser = {
+          userId: decoded.userId,
+          email: decoded.email,
+          role,
+          permissions,
+          schoolId: tenant.schoolId,
+        };
+
+        logger.logAuth("Request authenticated", user.userId, true, { path, role: user.role });
+
+        // Ensure context is always an object to prevent destructuring errors
+        return await handler(request, user, context || {});
       });
-
-      // Call the actual handler with authenticated user and context
-      // Ensure context is always an object to prevent destructuring errors
-      return await handler(request, user, context || {});
     } catch (error) {
       logger.error("Authentication failed", error as Error, {
         path: new URL(request.url).pathname,
@@ -180,7 +211,10 @@ export function withRole(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- route context shape varies per route
   return withAuth(async (request: Request, user: AuthUser, context?: any) => {
     const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
-    const hasRole = roles.includes(user.role);
+    // Head teacher and deputy head have the same rights (and ADMIN is the old name for the
+    // head's role), so asking for any leadership role accepts all of them.
+    const hasRole =
+      roles.includes(user.role) || (roles.some(isSchoolLeader) && isSchoolLeader(user.role));
 
     logger.debug(`Role check: ${user.role} in [${roles.join(", ")}]`, {
       userId: user.userId,

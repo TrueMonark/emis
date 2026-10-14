@@ -4,6 +4,7 @@ import { handleApiError } from "@/lib/http/error-handler";
 import { UnauthorizedError } from "@/lib/errors";
 import { Role } from "@school/shared/types/prisma-enums";
 import { smsService } from "@/features/sms/sms.service";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /** GET /api/sms/templates — all active templates (teacher+) */
 export async function GET(request: Request) {
@@ -21,9 +22,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return withAuth(async (req, user) => {
     try {
-      if (user.role !== Role.ADMIN) throw new UnauthorizedError("Admin only");
+      if (!isSchoolLeader(user.role)) throw new UnauthorizedError("Admin only");
       const body = await request.json();
-      const template = await smsService.createTemplate(body, { userId: user.userId, role: user.role });
+      const template = await smsService.createTemplate(body, { userId: user.userId, role: user.role as Role });
       return ApiResponse.success(template);
     } catch (error) {
       return handleApiError(error, { userId: user.userId, endpoint: "POST /api/sms/templates" });

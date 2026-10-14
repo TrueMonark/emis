@@ -1,4 +1,5 @@
 "use client";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 import { ChevronsUpDown, LogOut, User, Settings, Moon, Sun, Monitor } from "lucide-react";
 import { Avatar, AvatarFallback } from "@school/ui/components/avatar";
@@ -89,7 +90,7 @@ export function NavUser({ user }: NavUserProps) {
     // Determine profile route based on role
     if (rawRole === "HOD") return "/hod/profile";
     if (rawRole === "TEACHER") return "/teacher/profile";
-    if (rawRole === "ADMIN") return "/admin/profile";
+    if (isSchoolLeader(rawRole)) return "/admin/profile";
     if (rawRole === "PARENT") return "/parent/profile";
     return "/admin/profile"; // Default fallback
   };
@@ -98,7 +99,7 @@ export function NavUser({ user }: NavUserProps) {
     // Determine settings route based on role
     if (rawRole === "HOD") return "/hod/settings";
     if (rawRole === "TEACHER") return "/teacher/settings";
-    if (rawRole === "ADMIN") return "/admin/settings";
+    if (isSchoolLeader(rawRole)) return "/admin/settings";
     if (rawRole === "PARENT") return "/parent/settings";
     return "/admin/settings"; // Default fallback
   };
@@ -163,7 +164,7 @@ export function NavUser({ user }: NavUserProps) {
               </div>
               Profile
             </DropdownMenuItem>
-            {rawRole === "ADMIN" && (
+            {isSchoolLeader(rawRole) && (
               <DropdownMenuItem onClick={() => router.push(getSettingsRoute())}>
                 <Settings />
                 Settings

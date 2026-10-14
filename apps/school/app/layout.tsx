@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "School Management System",
-  description: "Zambian Government School Management System",
+  title: "EMIS · Monark Devs",
+  description: "Education Management Information System for Zambian schools, by Monark Devs",
 };
 
 export default function RootLayout({

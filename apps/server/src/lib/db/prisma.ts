@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
+import { createTenantClient } from "./tenant";
 
 const prismaClientSingleton = () => {
   const connectionString = process.env.DATABASE_URL;
@@ -39,8 +40,18 @@ declare global {
   var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>;
 }
 
-const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
+const baseClient = globalThis.prismaGlobal ?? prismaClientSingleton();
+if (process.env.NODE_ENV !== "production") globalThis.prismaGlobal = baseClient;
 
+/**
+ * The client the whole app uses. Every query runs in the current request's school (row-level
+ * security, see ./tenant.ts), so a school only ever sees its own rows.
+ */
+const prisma = createTenantClient(baseClient);
 export default prisma;
 
-if (process.env.NODE_ENV !== "production") globalThis.prismaGlobal = prisma;
+/**
+ * NOT restricted to a school. Only for the seed, test table resets and maintenance scripts —
+ * never in src/features or src/api. Anything written with it must set schoolId itself.
+ */
+export const systemPrisma = baseClient;

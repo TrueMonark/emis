@@ -40,13 +40,13 @@ describe("permissions/users routes", () => {
   });
 
   describe("PATCH /api/permissions/users/[id]/role", () => {
-    it("is ADMIN-only, and blocks self-demotion and demoting the last active admin", async () => {
+    it("is for school leaders only, and blocks self-demotion and demoting the last active admin", async () => {
       const target = await createTestUser({ role: Role.TEACHER });
 
       const deniedRole = await callRoute(updateRole, {
         method: "PATCH",
         url: `/api/permissions/users/${target.user.id}/role`,
-        token: headTeacherToken,
+        token: teacherToken,
         params: { id: target.user.id },
         body: { role: Role.HEAD_TEACHER },
       });
@@ -82,13 +82,13 @@ describe("permissions/users routes", () => {
   });
 
   describe("permission overrides", () => {
-    it("adds and removes a permission override (ADMIN-only), rejects a duplicate add and a missing reason", async () => {
+    it("adds and removes a permission override (school leaders only), rejects a duplicate add and a missing reason", async () => {
       const target = await createTestUser({ role: Role.TEACHER });
 
       const deniedAdd = await callRoute(addOverride, {
         method: "POST",
         url: `/api/permissions/users/${target.user.id}/overrides`,
-        token: headTeacherToken,
+        token: teacherToken,
         params: { id: target.user.id },
         body: { permission: Permission.CREATE_STUDENT, reason: "Covering for clerk" },
       });

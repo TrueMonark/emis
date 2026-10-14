@@ -3,6 +3,7 @@ import { Term, TermType } from "@school/shared/types/prisma-enums";
 import { termRepository } from "./term.repository";
 import { academicYearRepository } from "../academic-years/academicYear.repository";
 import { UnauthorizedError, NotFoundError, ValidationError, ConflictError } from "@/lib/errors";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * Term Service - Business Logic Layer
@@ -52,7 +53,7 @@ export class TermService {
    * Only ADMIN, HEAD_TEACHER, and DEPUTY_HEAD can manage terms
    */
   private canManage(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER", "DEPUTY_HEAD"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**
@@ -60,7 +61,7 @@ export class TermService {
    * Only ADMIN can delete terms
    */
   private canDelete(context: ServiceContext): boolean {
-    return context.role === "ADMIN";
+    return isSchoolLeader(context.role);
   }
 
   /**
@@ -68,7 +69,7 @@ export class TermService {
    * Only ADMIN and HEAD_TEACHER can activate terms
    */
   private canChangeStatus(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   // ==================== VALIDATION ====================

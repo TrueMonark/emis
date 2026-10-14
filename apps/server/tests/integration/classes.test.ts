@@ -83,7 +83,7 @@ describe("classes routes", () => {
     const deniedDelete = await callRoute(deleteClass, {
       method: "DELETE",
       url: `/api/classes/${classId}`,
-      token: headTeacherToken,
+      token: teacherToken,
       params: { id: classId },
     });
     expect(deniedDelete.status).toBe(403);

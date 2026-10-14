@@ -1,3 +1,8 @@
+import {
+  PASSWORD_CHANGE_REQUIRED,
+  PASSWORD_CHANGE_REQUIRED_HEADER,
+} from "@school/shared/auth/password-change";
+
 
 /**
  * Standardized API Response Utility
@@ -78,6 +83,21 @@ export class ApiResponse {
    */
   static forbidden(message: string = "Forbidden"): Response {
     return Response.json({ success: false, error: message }, { status: 403 });
+  }
+
+  /**
+   * The account still has a one-time password: everything except changing it is refused.
+   * The header lets the screens send the person to the change-password page.
+   */
+  static passwordChangeRequired(): Response {
+    return Response.json(
+      {
+        success: false,
+        error: "You must choose a new password before continuing.",
+        code: PASSWORD_CHANGE_REQUIRED,
+      },
+      { status: 403, headers: { [PASSWORD_CHANGE_REQUIRED_HEADER]: "true" } }
+    );
   }
 
   /**

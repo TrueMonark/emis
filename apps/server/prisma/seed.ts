@@ -12,6 +12,7 @@ import {
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 import bcrypt from "bcryptjs";
+import { createTenantClient, runWithTenant } from "../src/lib/db/tenant";
 import { randomBytes } from "node:crypto";
 
 const connectionString = process.env.DATABASE_URL;
@@ -34,7 +35,38 @@ const demoPassword = process.env.SEED_DEMO_PASSWORD || randomBytes(9).toString("
 
 const pool = new pg.Pool({ connectionString });
 const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+// `systemPrisma` sees every school (schools, memberships); `prisma` works inside the demo
+// school, exactly like the app (row-level security, see src/lib/db/tenant.ts).
+const systemPrisma = new PrismaClient({ adapter });
+const prisma = createTenantClient(systemPrisma);
+
+/**
+ * The school the demo data goes in: the school the demo admin already belongs to (e.g. a
+ * database that was in use before multi-school), otherwise a "Demo School".
+ */
+async function demoSchoolId(): Promise<string> {
+  const existing = await systemPrisma.schoolMembership.findFirst({
+    where: { user: { email: "admin@school.gov.zm" }, status: "ACTIVE" },
+    select: { schoolId: true },
+  });
+  if (existing) return existing.schoolId;
+  const school = await systemPrisma.school.upsert({
+    where: { id: "school-demo" },
+    update: {},
+    create: { id: "school-demo", name: "Demo School", districtOfficeId: "office-district-unassigned" },
+  });
+  return school.id;
+}
+
+/** Make the user an ACTIVE member of the school with this role (and mirror it on User.role). */
+async function ensureMembership(userId: string, schoolId: string, role: Role) {
+  await systemPrisma.schoolMembership.upsert({
+    where: { userId_schoolId: { userId, schoolId } },
+    update: { role, status: "ACTIVE", endDate: null },
+    create: { userId, schoolId, role, status: "ACTIVE" },
+  });
+  await systemPrisma.user.update({ where: { id: userId }, data: { role } });
+}
 
 async function hash(password: string) {
   return bcrypt.hash(password, 10);
@@ -42,12 +74,17 @@ async function hash(password: string) {
 
 async function main() {
   console.log("🌱 Seeding database...");
+  const schoolId = await demoSchoolId();
+  await runWithTenant({ schoolId, userId: null }, () => seedSchool(schoolId));
+}
+
+async function seedSchool(schoolId: string) {
 
   // ===============================
   // 1. Department
   // ===============================
   const mathDepartment = await prisma.department.upsert({
-    where: { code: "MATH" },
+    where: { schoolId_code: { schoolId, code: "MATH" } },
     update: {},
     create: {
       name: "Mathematics Department",
@@ -71,11 +108,13 @@ async function main() {
   // ===============================
   const adminUser = await prisma.user.upsert({
     where: { email: "admin@school.gov.zm" },
-    update: {},
+    // Re-running the seed resets the demo accounts to the password printed below,
+    // so the printed password always works (local databases only, see the guard above).
+    update: { passwordHash: adminPassword, hasDefaultPassword: true, isActive: true },
     create: {
       email: "admin@school.gov.zm",
       passwordHash: adminPassword,
-      role: Role.ADMIN,
+      role: Role.HEAD_TEACHER, // the school's head (ADMIN is retired as a school role)
       isActive: true,
       hasDefaultPassword: true,
     },
@@ -84,7 +123,9 @@ async function main() {
   // Math HOD - Role is TEACHER (HOD is a position, not a role)
   const mathHodUser = await prisma.user.upsert({
     where: { email: "hod.math@school.gov.zm" },
-    update: {},
+    // Re-running the seed resets the demo accounts to the password printed below,
+    // so the printed password always works (local databases only, see the guard above).
+    update: { passwordHash: adminPassword, hasDefaultPassword: true, isActive: true },
     create: {
       email: "hod.math@school.gov.zm",
       passwordHash: mathHodPassword,
@@ -96,7 +137,9 @@ async function main() {
 
   const teacherUser = await prisma.user.upsert({
     where: { email: "teacher1@school.gov.zm" },
-    update: {},
+    // Re-running the seed resets the demo accounts to the password printed below,
+    // so the printed password always works (local databases only, see the guard above).
+    update: { passwordHash: adminPassword, hasDefaultPassword: true, isActive: true },
     create: {
       email: "teacher1@school.gov.zm",
       passwordHash: teacherPassword,
@@ -105,6 +148,11 @@ async function main() {
       hasDefaultPassword: true,
     },
   });
+
+  // Their roles at the demo school (a person's role is per school).
+  await ensureMembership(adminUser.id, schoolId, Role.HEAD_TEACHER);
+  await ensureMembership(mathHodUser.id, schoolId, Role.TEACHER);
+  await ensureMembership(teacherUser.id, schoolId, Role.TEACHER);
 
   // ===============================
   // 4. Teacher Profiles
@@ -168,7 +216,7 @@ async function main() {
   // ===============================
   // HOD is a POSITION in the department model, not a role
   await prisma.department.update({
-    where: { code: "MATH" },
+    where: { schoolId_code: { schoolId, code: "MATH" } },
     data: {
       hodTeacher: {
         connect: { id: mathHodProfile.id },
@@ -242,7 +290,8 @@ async function main() {
   for (const permission of hodExtraPermissions) {
     await prisma.userPermission.upsert({
       where: {
-        userId_permission: {
+        schoolId_userId_permission: {
+          schoolId,
           userId: mathHodUser.id,
           permission,
         },
@@ -386,7 +435,7 @@ async function main() {
   console.log(
     process.env.SEED_DEMO_PASSWORD
       ? "   Password: the value of SEED_DEMO_PASSWORD"
-      : `   Password (new accounts only, shown once): ${demoPassword}`
+      : `   Password (shown once; re-running the seed sets a new one): ${demoPassword}`
   );
 }
 
@@ -396,5 +445,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await systemPrisma.$disconnect();
   });

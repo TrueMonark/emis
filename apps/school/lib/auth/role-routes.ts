@@ -1,4 +1,5 @@
 import { Role } from "@school/shared/types/prisma-enums";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * Role-based routing configuration
@@ -9,7 +10,7 @@ import { Role } from "@school/shared/types/prisma-enums";
 export const ROLE_ROUTES: Record<Role, string> = {
   ADMIN: "/admin",
   HEAD_TEACHER: "/admin",
-  DEPUTY_HEAD: "/deputy-head",
+  DEPUTY_HEAD: "/admin", // same screens and rights as the head teacher
   CLERK: "/admin",
   TEACHER: "/teacher",
 };
@@ -26,24 +27,18 @@ export function getRoleRoute(role: Role): string {
  * NOTE: /hod routes require position-based check, not included here
  */
 export function canAccessRoute(role: Role, routePrefix: string): boolean {
-  const adminRoles: Role[] = ["ADMIN", "HEAD_TEACHER", "CLERK"];
-
   if (routePrefix.startsWith("/admin")) {
-    return adminRoles.includes(role);
-  }
-
-  if (routePrefix.startsWith("/deputy-head")) {
-    return role === "DEPUTY_HEAD" || role === "HEAD_TEACHER" || role === "ADMIN";
+    return isAdminRole(role);
   }
 
   if (routePrefix.startsWith("/teacher")) {
-    return role === "TEACHER" || role === "DEPUTY_HEAD" || role === "HEAD_TEACHER" || role === "ADMIN";
+    return role === "TEACHER" || isSchoolLeader(role);
   }
 
   // /hod routes: allow TEACHER role — actual HOD position check is done
   // by the individual pages/APIs via Department.hodTeacherId
   if (routePrefix.startsWith("/hod")) {
-    return role === "TEACHER" || role === "DEPUTY_HEAD" || role === "HEAD_TEACHER" || role === "ADMIN";
+    return role === "TEACHER" || isSchoolLeader(role);
   }
 
   return false;
@@ -52,7 +47,7 @@ export function canAccessRoute(role: Role, routePrefix: string): boolean {
 /**
  * Roles that have access to admin routes
  */
-export const ADMIN_ROLES: Role[] = ["ADMIN", "HEAD_TEACHER", "CLERK"];
+export const ADMIN_ROLES: Role[] = ["ADMIN", "HEAD_TEACHER", "DEPUTY_HEAD", "CLERK"];
 
 /**
  * Check if a role is an admin role

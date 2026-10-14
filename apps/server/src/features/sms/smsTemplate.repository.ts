@@ -39,7 +39,7 @@ export class SMSTemplateRepository {
    * Find SMS template by name
    */
   async findByName(name: string): Promise<SMSTemplate | null> {
-    return prisma.sMSTemplate.findUnique({
+    return prisma.sMSTemplate.findFirst({
       where: { name },
     });
   }

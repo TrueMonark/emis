@@ -8,6 +8,7 @@ import { academicYearRepository } from "../academic-years/academicYear.repositor
 import prisma from "@/lib/db/prisma";
 import { UnauthorizedError, NotFoundError, ValidationError, ConflictError } from "@/lib/errors";
 import { getErrorMessage } from "@school/shared/format";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * SubjectTeacherAssignment Service - Business Logic Layer
@@ -69,14 +70,14 @@ export class SubjectTeacherAssignmentService {
    * Check if user can manage assignments
    */
   private canManage(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER", "DEPUTY_HEAD"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**
    * Check if user can delete assignments
    */
   private canDelete(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**

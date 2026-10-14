@@ -47,13 +47,8 @@ export class TimeSlotRepository {
    * Find time slot by start and end time
    */
   async findByTime(startTime: string, endTime: string): Promise<TimeSlot | null> {
-    return prisma.timeSlot.findUnique({
-      where: {
-        startTime_endTime: {
-          startTime,
-          endTime,
-        },
-      },
+    return prisma.timeSlot.findFirst({
+      where: { startTime, endTime },
     });
   }
 

@@ -71,7 +71,7 @@ describe("departments routes", () => {
     const deniedDelete = await callRoute(deleteDepartment, {
       method: "DELETE",
       url: `/api/departments/${departmentId}`,
-      token: headTeacherToken,
+      token: teacherToken,
       params: { id: departmentId },
     });
     expect(deniedDelete.status).toBe(403);
@@ -85,14 +85,14 @@ describe("departments routes", () => {
     expect(deleted.status).toBe(200);
   });
 
-  it("only ADMIN can add/remove department members, and invalid teacher IDs are rejected", async () => {
+  it("only school leaders can add/remove department members, and invalid teacher IDs are rejected", async () => {
     const department = await createTestDepartment();
     const teacher = await createTestUser({ role: Role.TEACHER });
 
     const deniedAdd = await callRoute(addMembers, {
       method: "POST",
       url: `/api/departments/${department.id}/members`,
-      token: headTeacherToken,
+      token: teacherToken,
       params: { id: department.id },
       body: { teacherIds: [teacher.teacherProfile!.id] },
     });

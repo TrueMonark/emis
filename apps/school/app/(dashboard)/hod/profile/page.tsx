@@ -8,7 +8,6 @@ import { Skeleton } from "@school/ui/components/skeleton";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ChangePasswordCard } from "@/components/profile/change-password-card";
-import { PasswordChangePrompt } from "@/components/profile/password-change-prompt";
 import { authFetch } from "@/lib/api-client";
 
 interface HODProfile {
@@ -36,7 +35,6 @@ export default function HodProfilePage() {
   const [profile, setProfile] = useState<HODProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasDefaultPassword, setHasDefaultPassword] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -57,7 +55,6 @@ export default function HodProfilePage() {
       const result = await response.json();
       if (!result?.data) throw new Error("Invalid response format from server");
       setProfile(result.data);
-      setHasDefaultPassword(result.data.hasDefaultPassword || false);
       setError(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to load profile";
@@ -138,7 +135,6 @@ export default function HodProfilePage() {
 
   return (
     <div className="space-y-4 px-4 lg:px-0 lg:space-y-6">
-      <PasswordChangePrompt hasDefaultPassword={hasDefaultPassword} />
 
       {/* Desktop header — hidden on mobile (layout bar shows title) */}
       <div className="hidden lg:flex items-start justify-between mt-2">

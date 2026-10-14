@@ -9,10 +9,18 @@ import {
 import { teacherRepository } from "./teacher.repository";
 import { subjectRepository } from "../subjects/subject.repository";
 import prisma from "@/lib/db/prisma";
-import bcrypt from "bcryptjs";
 import { UnauthorizedError, NotFoundError, ValidationError } from "@/lib/errors";
 import { sendStaffSms } from "@/lib/sms/send-staff-sms";
+import { issueOneTimePassword, oneTimePasswordTtlHours } from "@/features/auth/one-time-password";
+import { requireSchoolId } from "@/lib/db/tenant";
+
+/** A one-time password just issued for an account — shown once, never stored in plain text. */
+export interface IssuedPasswordInfo {
+  temporaryPassword: string;
+  temporaryPasswordExpiresAt: Date;
+}
 import { logger } from "@/lib/logger/logger";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * Teacher Service - Business Logic Layer
@@ -91,7 +99,7 @@ export class TeacherService {
    * Only ADMIN and HEAD_TEACHER can create teachers
    */
   private canCreate(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**
@@ -99,7 +107,7 @@ export class TeacherService {
    * Only ADMIN and HEAD_TEACHER can update teachers
    */
   private canUpdate(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**
@@ -107,7 +115,7 @@ export class TeacherService {
    * Only ADMIN can delete teachers
    */
   private canDelete(context: ServiceContext): boolean {
-    return context.role === "ADMIN";
+    return isSchoolLeader(context.role);
   }
 
   /**
@@ -335,7 +343,7 @@ export class TeacherService {
   async createTeacher(
     input: CreateTeacherInput,
     context: ServiceContext
-  ): Promise<TeacherProfile> {
+  ): Promise<TeacherProfile & IssuedPasswordInfo> {
     // Check permissions
     if (!this.canCreate(context)) {
       throw new UnauthorizedError(
@@ -356,9 +364,8 @@ export class TeacherService {
       this.validateYearsExperience(input.yearsExperience);
     }
 
-    // Hash the default password
-    const defaultPassword = "teacher123";
-    const passwordHash = await bcrypt.hash(defaultPassword, 10);
+    // Each new account gets its own random one-time password (never a shared default).
+    const otp = await issueOneTimePassword();
 
     // Create teacher with user account
     const teacherData: Prisma.TeacherProfileCreateInput = {
@@ -377,10 +384,13 @@ export class TeacherService {
       user: {
         create: {
           email: input.email,
-          passwordHash: passwordHash,
+          passwordHash: otp.passwordHash,
           role: "TEACHER",
           isActive: true,
-          hasDefaultPassword: true, // Flag to indicate user needs to change password
+          hasDefaultPassword: true, // the server allows nothing but a password change until then
+          temporaryPasswordExpiresAt: otp.expiresAt,
+          // The new teacher's membership of this school (the person can later move schools).
+          schoolMemberships: { create: { schoolId: requireSchoolId(), role: "TEACHER" } },
         },
       },
     };
@@ -390,7 +400,7 @@ export class TeacherService {
     // Send SMS with login credentials (fire-and-forget — don't block account creation)
     sendStaffSms(
       input.phone,
-      `Your school system account has been created.\nEmail: ${input.email}\nPassword: teacher123\nPlease log in and change your password immediately.`
+      `Your school system account has been created.\nEmail: ${input.email}\nOne-time password: ${otp.password}\nIt expires in ${oneTimePasswordTtlHours()} hours. You will be asked to choose your own password when you log in.`
     ).catch((err) => logger.error("Account creation SMS failed", err instanceof Error ? err : undefined));
 
     // Assign subjects to the teacher
@@ -409,7 +419,9 @@ export class TeacherService {
       )
     );
 
-    return teacher;
+    // The one-time password is returned once so the screen can show it to the person who
+    // created the account; it is never stored in plain text.
+    return { ...teacher, temporaryPassword: otp.password, temporaryPasswordExpiresAt: otp.expiresAt };
   }
 
   /**
@@ -766,12 +778,13 @@ export class TeacherService {
   }
 
   /**
-   * Reset a teacher's password to the default and notify them via SMS.
-   * Only ADMIN/HEAD_TEACHER can do this.
+   * Reset a teacher's password to a new random one-time password. Returned once for the
+   * person resetting it to hand over (and sent by SMS when configured); the teacher must
+   * choose their own password at next login. HEAD_TEACHER, DEPUTY_HEAD and ADMIN can do this.
    */
-  async resetPassword(teacherId: string, context: ServiceContext): Promise<void> {
-    if (!["ADMIN", "HEAD_TEACHER"].includes(context.role)) {
-      throw new UnauthorizedError("Only admins and head teachers can reset passwords");
+  async resetPassword(teacherId: string, context: ServiceContext): Promise<IssuedPasswordInfo> {
+    if (!isSchoolLeader(context.role)) {
+      throw new UnauthorizedError("Only the head teacher or deputy head can reset passwords");
     }
 
     const teacher = await teacherRepository.findByIdWithUser(teacherId);
@@ -781,16 +794,26 @@ export class TeacherService {
     if (!teacher.user) {
       throw new ValidationError("Teacher has no login account");
     }
+    if (teacher.user.id === context.userId) {
+      throw new ValidationError("You can't reset your own password here. Use Change Password instead.");
+    }
 
-    const DEFAULT_PASSWORD = "teacher123";
-    const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
-    await teacherRepository.resetPassword(teacher.user.id, passwordHash);
+    const otp = await issueOneTimePassword();
+    await teacherRepository.resetPassword(teacher.user.id, otp.passwordHash, otp.expiresAt);
+
+    logger.info("Teacher password reset", {
+      teacherId,
+      resetBy: context.userId,
+      expiresAt: otp.expiresAt.toISOString(),
+    });
 
     // Fire-and-forget SMS notification
     sendStaffSms(
       teacher.phone,
-      `Your school system password has been reset by an administrator.\nEmail: ${teacher.user.email}\nNew password: ${DEFAULT_PASSWORD}\nPlease log in and change your password immediately.`
+      `Your school system password has been reset.\nEmail: ${teacher.user.email}\nOne-time password: ${otp.password}\nIt expires in ${oneTimePasswordTtlHours()} hours. You will be asked to choose your own password when you log in.`
     ).catch((err) => logger.error("Password reset SMS failed", err instanceof Error ? err : undefined));
+
+    return { temporaryPassword: otp.password, temporaryPasswordExpiresAt: otp.expiresAt };
   }
 
   /**

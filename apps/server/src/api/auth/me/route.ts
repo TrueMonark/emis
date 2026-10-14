@@ -21,6 +21,7 @@ export const GET = withAuth(async (request: Request, user) => {
       email: userData.email,
       role: userData.role,
       isActive: userData.isActive,
+      hasDefaultPassword: userData.hasDefaultPassword,
       lastLogin: userData.lastLogin,
       profile: userData.profile
         ? {

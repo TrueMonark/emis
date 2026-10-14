@@ -49,9 +49,10 @@ export function MobileAdminDrawer({ open, onClose, user }: MobileAdminDrawerProp
     : "A";
 
   const roleLabel =
-    user?.role === "HEAD_TEACHER" ? "Head Teacher"
+    user?.role === "HEAD_TEACHER" || user?.role === "ADMIN" ? "Head Teacher"
+    : user?.role === "DEPUTY_HEAD" ? "Deputy Head"
     : user?.role === "CLERK"      ? "Clerk"
-    : "Admin";
+    : "Staff";
 
   return (
     <Sheet open={open} onOpenChange={onClose}>

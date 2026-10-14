@@ -64,7 +64,8 @@ export class StudentRepository {
    * Find student by student number
    */
   findByStudentNumber(studentNumber: string): Promise<Student | null> {
-    return prisma.student.findUnique({
+    // Unique per school; row-level security limits this to the current school.
+    return prisma.student.findFirst({
       where: { studentNumber },
     });
   }

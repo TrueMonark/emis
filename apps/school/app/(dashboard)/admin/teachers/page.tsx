@@ -66,6 +66,10 @@ import {
   AlertDialogTitle,
 } from "@school/ui/components/alert-dialog";
 import { authFetch } from "@/lib/api-client";
+import {
+  OneTimePasswordDialog,
+  type IssuedPassword,
+} from "@/components/accounts/one-time-password-dialog";
 
 export default function TeachersManagement() {
   const { toast } = useToast();
@@ -88,6 +92,7 @@ export default function TeachersManagement() {
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
   const [teacherToReset, setTeacherToReset] = useState<any>(null);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [issuedPassword, setIssuedPassword] = useState<IssuedPassword | null>(null);
 
   // Mobile-only: which of the row-one filters is currently focused/open.
   const [activeMobileFilter, setActiveMobileFilter] = useState<
@@ -160,14 +165,16 @@ export default function TeachersManagement() {
         method: "POST"
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.error || "Failed to reset password");
       }
 
-      toast({
-        title: "Password Reset",
-        description: `Password reset for ${teacherToReset.firstName} ${teacherToReset.lastName}. They will receive an SMS with their new credentials.`,
+      setIssuedPassword({
+        name: `${teacherToReset.firstName} ${teacherToReset.lastName}`,
+        email: teacherToReset.user?.email ?? "",
+        temporaryPassword: data.data.temporaryPassword,
+        temporaryPasswordExpiresAt: data.data.temporaryPasswordExpiresAt,
       });
     } catch (err) {
       toast({
@@ -628,6 +635,12 @@ export default function TeachersManagement() {
         }}
       />
 
+      <OneTimePasswordDialog
+        issued={issuedPassword}
+        reason="reset"
+        onClose={() => setIssuedPassword(null)}
+      />
+
       {/* Reset Password Confirmation Dialog */}
       <AlertDialog open={resetPasswordDialogOpen} onOpenChange={setResetPasswordDialogOpen}>
         <AlertDialogContent>
@@ -643,10 +656,10 @@ export default function TeachersManagement() {
               <span className="font-semibold">
                 {teacherToReset?.firstName} {teacherToReset?.lastName}
               </span>
-              &apos;s password to the default{" "}
-              <span className="font-mono font-semibold">teacher123</span>. They
-              will be prompted to change it on next login and will receive an SMS
-              with their new credentials.
+              &apos;s password. A new one-time password will be shown to you once, to give
+              them in person or by phone (it is also sent by SMS if SMS is set up). They
+              must choose their own password when they log in, and their old password
+              stops working.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

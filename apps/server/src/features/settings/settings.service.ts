@@ -6,6 +6,10 @@ import {
   ValidationError,
 } from "@/lib/errors";
 import { getErrorMessage } from "@school/shared/format";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
+import { schoolRepository } from "@/features/schools/school.repository";
+import { requireSchoolId } from "@/lib/db/tenant";
+import { SCHOOL_NAME_NOT_SET } from "@school/shared/format";
 
 /**
  * Settings Service - Business Logic Layer
@@ -43,7 +47,7 @@ export class SettingsService {
    * Only ADMIN can manage system settings
    */
   private canManageSettings(context: ServiceContext): boolean {
-    return context.role === "ADMIN";
+    return isSchoolLeader(context.role);
   }
 
   /**
@@ -56,7 +60,7 @@ export class SettingsService {
     category?: SettingCategory
   ): boolean {
     // Admins and leadership can view all settings
-    if (["ADMIN", "HEAD_TEACHER", "DEPUTY_HEAD"].includes(context.role)) {
+    if (isSchoolLeader(context.role)) {
       return true;
     }
 
@@ -238,6 +242,12 @@ export class SettingsService {
 
     // Batch upsert
     await systemSettingsRepository.upsertMany(settingsArray);
+
+    // The school's name also lives on the School record (sidebar, district office lists).
+    const name = input.category === "school_info" ? input.settings.name : undefined;
+    if (typeof name === "string" && name.trim()) {
+      await schoolRepository.updateName(requireSchoolId(), name.trim());
+    }
   }
 
   /**
@@ -381,6 +391,18 @@ export class SettingsService {
     const defaults = this.getDefaultSettings(category);
     await this.setSettingsBatch({ category, settings: defaults }, context);
   }
+
+  /**
+   * The school's display name, for the screens' sidebar header. Any signed-in user may read it
+   * (it's on every report card anyway); the rest of the school-info settings stay restricted.
+   * It's the name of the school the person is working in.
+   */
+  async getSchoolIdentity(): Promise<{ name: string | null }> {
+    const school = await schoolRepository.findById(requireSchoolId());
+    const name = school?.name?.trim() ?? "";
+    return { name: name && name !== SCHOOL_NAME_NOT_SET ? name : null };
+  }
+
 }
 
 // Singleton instance

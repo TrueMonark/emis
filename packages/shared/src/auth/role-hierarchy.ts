@@ -8,11 +8,14 @@
  * HOD-specific access is granted via UserPermission table, not role hierarchy.
  *
  * Hierarchy (highest to lowest):
- * ADMIN -> Full system access
- * HEAD_TEACHER -> School-wide management + all below
- * DEPUTY_HEAD -> Deputy responsibilities + all below
+ * HEAD_TEACHER = DEPUTY_HEAD -> the school's leadership: full access to the school, same rights
+ *   (decided 2026-10-12). ADMIN is the old name for the head's account and is treated the same;
+ *   school memberships no longer use it.
  * TEACHER -> Teaching and classroom management
  * CLERK -> Administrative tasks (parallel to TEACHER)
+ *
+ * For "is this person in charge of the school?" use isSchoolLeader(), never a check for one
+ * specific leadership role.
  */
 
 import { Role } from '../types/prisma-enums';
@@ -24,11 +27,19 @@ import { Role } from '../types/prisma-enums';
  */
 export const ROLE_HIERARCHY = {
   ADMIN: 4,
-  HEAD_TEACHER: 3,
-  DEPUTY_HEAD: 2,
+  HEAD_TEACHER: 4,
+  DEPUTY_HEAD: 4, // same rights as the head teacher
   TEACHER: 1,
   CLERK: 1, // Same level as teacher, different permissions
 } as const;
+
+/** The school's leadership roles: all have the same rights. */
+export const SCHOOL_LEADER_ROLES: readonly Role[] = [Role.ADMIN, Role.HEAD_TEACHER, Role.DEPUTY_HEAD];
+
+/** Whether the role is one of the school's leaders (head teacher, deputy head, or old ADMIN). */
+export function isSchoolLeader(role: Role | string | null | undefined): boolean {
+  return !!role && (SCHOOL_LEADER_ROLES as readonly string[]).includes(role);
+}
 
 /**
  * Check if roleA has equal or higher authority than roleB
@@ -53,15 +64,13 @@ export function getEffectiveRoles(role: Role): Role[] {
   const level = ROLE_HIERARCHY[role];
   const effectiveRoles: Role[] = [role];
 
-  // Build list of inherited roles based on hierarchy
-  if (level >= ROLE_HIERARCHY.DEPUTY_HEAD) {
-    effectiveRoles.push(Role.TEACHER);
-  }
+  // Build list of inherited roles based on hierarchy: a school leader has every leadership role
+  // and the teacher role.
   if (level >= ROLE_HIERARCHY.HEAD_TEACHER) {
-    effectiveRoles.push(Role.DEPUTY_HEAD);
-  }
-  if (level >= ROLE_HIERARCHY.ADMIN) {
-    effectiveRoles.push(Role.HEAD_TEACHER);
+    for (const leader of SCHOOL_LEADER_ROLES) {
+      if (!effectiveRoles.includes(leader)) effectiveRoles.push(leader);
+    }
+    effectiveRoles.push(Role.TEACHER);
   }
 
   return effectiveRoles;

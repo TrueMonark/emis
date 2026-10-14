@@ -5,6 +5,7 @@ import { UnauthorizedError } from "@/lib/errors";
 import { Role } from "@school/shared/types/prisma-enums";
 import { loadSmsConfig, saveSmsConfig, maskKey } from "@/lib/sms/sms-config";
 import { logger } from "@/lib/logger/logger";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * GET /api/admin/settings/sms
@@ -13,7 +14,7 @@ import { logger } from "@/lib/logger/logger";
 export async function GET(request: Request) {
   return withAuth(async (req, user) => {
     try {
-      if (user.role !== Role.ADMIN) throw new UnauthorizedError("Admin only");
+      if (!isSchoolLeader(user.role)) throw new UnauthorizedError("Admin only");
 
       const config = await loadSmsConfig();
 
@@ -46,7 +47,7 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   return withAuth(async (req, user) => {
     try {
-      if (user.role !== Role.ADMIN) throw new UnauthorizedError("Admin only");
+      if (!isSchoolLeader(user.role)) throw new UnauthorizedError("Admin only");
 
       const body = await request.json();
 

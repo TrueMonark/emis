@@ -12,6 +12,7 @@ import { AuthContext } from "@/lib/auth/authorization";
 import { hasRoleAuthority } from "@school/shared/auth/role-hierarchy";
 import { logger } from "@/lib/logger/logger";
 import { getErrorMessage } from "@school/shared/format";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * SMS Service - Business Logic Layer
@@ -89,7 +90,7 @@ export class SMSService {
    * Only admins can manage templates
    */
   private canManageTemplates(context: ServiceContext): boolean {
-    return context.role === Role.ADMIN;
+    return isSchoolLeader(context.role);
   }
 
   // ==================== VALIDATION ====================
@@ -506,7 +507,7 @@ export class SMSService {
    * Test SMS connection for the given provider (defaults to Africa's Talking).
    */
   async testConnection(context: ServiceContext, provider: SMSProvider = "AFRICAS_TALKING") {
-    if (context.role !== Role.ADMIN) {
+    if (!isSchoolLeader(context.role)) {
       throw new UnauthorizedError("You do not have permission to test SMS connection");
     }
 
@@ -585,7 +586,7 @@ export class SMSService {
    */
   async seedDefaultTemplates(context: ServiceContext) {
     // Authorization
-    if (context.role !== Role.ADMIN) {
+    if (!isSchoolLeader(context.role)) {
       throw new UnauthorizedError("You do not have permission to seed templates");
     }
 

@@ -495,8 +495,8 @@ export function TeacherForm({
                         />
                       </FormControl>
                       <FormDescription>
-                        Teacher&apos;s email (used for login with default password:
-                        teacher123)
+                        Used to log in. A one-time password is shown to you after saving,
+                        to give to the teacher.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

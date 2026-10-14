@@ -11,7 +11,11 @@ datasource db {
 
 model AcademicYear {
   id                        String                     @id @default(cuid())
-  year                      Int                        @unique
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  year                      Int
   startDate                 DateTime
   endDate                   DateTime
   isActive                  Boolean                    @default(false)
@@ -28,11 +32,17 @@ model AcademicYear {
   timetableConfiguration    TimetableConfiguration?
   timetableSlots            TimetableSlot[]
 
+  @@unique([schoolId, year])
+  @@index([schoolId])
   @@map("academic_years")
 }
 
 model Term {
   id                      String                   @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   academicYearId          String
   termType                TermType
   startDate               DateTime
@@ -50,6 +60,7 @@ model Term {
   timetableConfigurations TimetableConfiguration[]
 
   @@unique([academicYearId, termType])
+  @@index([schoolId])
   @@map("terms")
 }
 
@@ -73,6 +84,10 @@ model Grade {
 
 model Class {
   id                        String                     @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   name                      String
   gradeId                   String
   capacity                  Int                        @default(40)
@@ -93,14 +108,19 @@ model Class {
   subjectTeacherAssignments SubjectTeacherAssignment[]
   timetableSlots            TimetableSlot[]
 
-  @@unique([gradeId, name])
+  @@unique([schoolId, gradeId, name])
   @@index([gradeId, status])
+  @@index([schoolId])
   @@map("classes")
 }
 
 model Subject {
   id                        String                     @id @default(cuid())
-  code                      String                     @unique
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  code                      String
   name                      String
   description               String?
   createdAt                 DateTime                   @default(now())
@@ -119,12 +139,18 @@ model Subject {
   teacherSubjects           TeacherSubject[]
   timetableSlots            TimetableSlot[]
 
+  @@unique([schoolId, code])
   @@index([departmentId])
+  @@index([schoolId])
   @@map("subjects")
 }
 
 model GradeSubject {
   id        String  @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   gradeId   String
   subjectId String
   isCore    Boolean @default(true)
@@ -134,13 +160,18 @@ model GradeSubject {
   @@unique([gradeId, subjectId])
   @@index([gradeId])
   @@index([subjectId])
+  @@index([schoolId])
   @@map("grade_subjects")
 }
 
 model Department {
   id           String              @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   name         String
-  code         String              @unique
+  code         String
   description  String?
   status       DepartmentStatus    @default(ACTIVE)
   hodTeacherId String?             @unique
@@ -150,13 +181,19 @@ model Department {
   subjects     Subject[]
   teachers     TeacherDepartment[]
 
+  @@unique([schoolId, code])
   @@index([status])
+  @@index([schoolId])
   @@map("departments")
 }
 
 model Student {
   id                 String                    @id @default(cuid())
-  studentNumber      String                    @unique
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  studentNumber      String
   firstName          String
   middleName         String?
   lastName           String
@@ -181,15 +218,21 @@ model Student {
   studentGuardians   StudentGuardian[]
   promotions         StudentPromotion[]
 
+  @@unique([schoolId, studentNumber])
   @@index([status])
   @@index([studentNumber])
   @@index([admissionDate])
   @@index([vulnerability])
+  @@index([schoolId])
   @@map("students")
 }
 
 model Guardian {
   id               String            @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   firstName        String
   lastName         String
   phone            String
@@ -204,11 +247,16 @@ model Guardian {
 
   @@index([phone])
   @@index([email])
+  @@index([schoolId])
   @@map("guardians")
 }
 
 model StudentGuardian {
   id           String             @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   studentId    String
   guardianId   String
   relationship ParentRelationship
@@ -221,11 +269,16 @@ model StudentGuardian {
   @@unique([studentId, guardianId])
   @@index([studentId])
   @@index([guardianId])
+  @@index([schoolId])
   @@map("student_guardians")
 }
 
 model StudentClassEnrollment {
   id              String           @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   studentId       String
   classId         String
   academicYearId  String
@@ -243,11 +296,16 @@ model StudentClassEnrollment {
   @@unique([studentId, academicYearId])
   @@index([classId, academicYearId])
   @@index([studentId, status])
+  @@index([schoolId])
   @@map("student_class_enrollments")
 }
 
 model StudentPromotion {
   id             String          @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   studentId      String
   fromGradeLevel GradeLevel
   toGradeLevel   GradeLevel?
@@ -263,6 +321,7 @@ model StudentPromotion {
   @@index([studentId, academicYear])
   @@index([academicYear, status])
   @@index([approvedById])
+  @@index([schoolId])
   @@map("student_promotions")
 }
 
@@ -273,6 +332,8 @@ model User {
   role                  Role             @default(TEACHER)
   isActive              Boolean          @default(true)
   hasDefaultPassword    Boolean          @default(false)
+  /// When a one-time password stops working. Null = no expiry (e.g. seeded demo accounts).
+  temporaryPasswordExpiresAt DateTime?
   lastLogin             DateTime?
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
@@ -280,6 +341,7 @@ model User {
   sentNotifications     Notification[]   @relation("SentNotifications")
   profile               TeacherProfile?
   userPermissions       UserPermission[] @relation("UserPermissions")
+  schoolMemberships     SchoolMembership[]
 
   @@index([email])
   @@index([role])
@@ -325,6 +387,139 @@ model TeacherProfile {
   @@map("teacher_profiles")
 }
 
+
+// =====================================================================
+// National structure (Phase 3a). Global tables: not filtered by school.
+// =====================================================================
+
+enum EducationOfficeType {
+  HQ
+  PROVINCIAL
+  DISTRICT
+}
+
+enum EmisNumberStatus {
+  CONFIRMED
+  PENDING
+  DISPUTED
+}
+
+enum SchoolCategory {
+  PUBLIC
+  AIDED
+  COMMUNITY
+  PRIVATE
+}
+
+enum SchoolStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum MembershipStatus {
+  /// A transfer waiting for confirmation: the person can't act in this school yet.
+  PENDING
+  ACTIVE
+  ENDED
+}
+
+/// Ministry HQ, provincial offices (PEO) and district offices (DEBS). Its own tree, not the
+/// administrative map: the Education Act lets education districts differ (ss.6–7).
+model EducationOffice {
+  id        String              @id @default(cuid())
+  type      EducationOfficeType
+  name      String
+  code      String?             @unique
+  parentId  String?
+  isActive  Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  parent    EducationOffice?    @relation("OfficeTree", fields: [parentId], references: [id])
+  children  EducationOffice[]   @relation("OfficeTree")
+  schools   School[]
+
+  @@index([parentId])
+  @@index([type])
+  @@map("education_offices")
+}
+
+/// A school. The EMIS number is the official ID, but official lists contain duplicates and
+/// errors, so a school can exist with a PENDING number.
+model School {
+  id               String           @id @default(cuid())
+  name             String
+  emisNumber       String?          @unique
+  emisStatus       EmisNumberStatus @default(PENDING)
+  category         SchoolCategory   @default(PUBLIC)
+  /// e.g. the church running an aided school
+  agency           String?
+  districtOfficeId String
+  status           SchoolStatus     @default(ACTIVE)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  districtOffice   EducationOffice  @relation(fields: [districtOfficeId], references: [id])
+  memberships      SchoolMembership[]
+  academicYears              AcademicYear[]
+  terms                      Term[]
+  classes                    Class[]
+  subjects                   Subject[]
+  gradeSubjects              GradeSubject[]
+  departments                Department[]
+  students                   Student[]
+  guardians                  Guardian[]
+  studentGuardians           StudentGuardian[]
+  studentClassEnrollments    StudentClassEnrollment[]
+  studentPromotions          StudentPromotion[]
+  teacherSubjects            TeacherSubject[]
+  teacherDepartments         TeacherDepartment[]
+  classTeacherAssignments    ClassTeacherAssignment[]
+  subjectTeacherAssignments  SubjectTeacherAssignment[]
+  classSubjects              ClassSubject[]
+  timetableConfigurations    TimetableConfiguration[]
+  timetableSlots             TimetableSlot[]
+  lessonLogs                 LessonLog[]
+  rooms                      Room[]
+  timeSlots                  TimeSlot[]
+  classTimetables            ClassTimetable[]
+  secondaryTimetables        SecondaryTimetable[]
+  subjectPeriodRequirements  SubjectPeriodRequirement[]
+  assessments                Assessment[]
+  assessmentWindows          AssessmentWindow[]
+  studentAssessmentResults   StudentAssessmentResult[]
+  reportCards                ReportCard[]
+  reportCardSubjects         ReportCardSubject[]
+  attendanceRecords          AttendanceRecord[]
+  userPermissions            UserPermission[]
+  settings                   SystemSettings[]
+  smsLogs                    SMSLog[]
+  smsTemplates               SMSTemplate[]
+  notifications              Notification[]
+
+  @@index([districtOfficeId])
+  @@map("schools")
+}
+
+/// A person's role at a school. At most one ACTIVE membership per person (a partial unique
+/// index in the migration enforces it); a transfer adds a PENDING one at the new school.
+/// User.role mirrors the role of the ACTIVE membership.
+model SchoolMembership {
+  id          String           @id @default(cuid())
+  userId      String
+  schoolId    String
+  role        Role
+  status      MembershipStatus @default(ACTIVE)
+  startDate   DateTime         @default(now())
+  endDate     DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school      School           @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, schoolId])
+  @@index([schoolId, status])
+  @@map("school_memberships")
+}
+
 enum TeacherSubjectRole {
   PRIMARY
   SECONDARY
@@ -333,6 +528,10 @@ enum TeacherSubjectRole {
 
 model TeacherSubject {
   id        String             @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   teacherId String
   subjectId String
   // Distinguishes the teacher's main qualified subject, an optional second
@@ -348,11 +547,16 @@ model TeacherSubject {
 
   @@unique([teacherId, subjectId])
   @@index([teacherId])
+  @@index([schoolId])
   @@map("teacher_subjects")
 }
 
 model TeacherDepartment {
   id           String         @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   teacherId    String
   departmentId String
   isPrimary    Boolean        @default(false)
@@ -364,11 +568,16 @@ model TeacherDepartment {
   @@unique([teacherId, departmentId])
   @@index([teacherId])
   @@index([departmentId])
+  @@index([schoolId])
   @@map("teacher_departments")
 }
 
 model ClassTeacherAssignment {
   id             String         @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   teacherId      String
   classId        String
   academicYearId String
@@ -383,11 +592,16 @@ model ClassTeacherAssignment {
 
   @@unique([classId, academicYearId])
   @@index([teacherId, academicYearId])
+  @@index([schoolId])
   @@map("class_teacher_assignments")
 }
 
 model SubjectTeacherAssignment {
   id             String         @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   teacherId      String
   subjectId      String
   classId        String
@@ -409,11 +623,16 @@ model SubjectTeacherAssignment {
   @@index([classId, academicYearId])
   @@index([subjectId, academicYearId])
   @@index([classSubjectId])
+  @@index([schoolId])
   @@map("subject_teacher_assignments")
 }
 
 model ClassSubject {
   id                        String                     @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   classId                   String
   subjectId                 String
   periodsPerWeek            Int
@@ -427,11 +646,16 @@ model ClassSubject {
   @@unique([classId, subjectId])
   @@index([classId])
   @@index([subjectId])
+  @@index([schoolId])
   @@map("class_subjects")
 }
 
 model TimetableConfiguration {
   id                      String          @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   academicYearId          String          @unique
   termId                  String?
   schoolStartTime         String
@@ -451,11 +675,16 @@ model TimetableConfiguration {
   term                    Term?           @relation(fields: [termId], references: [id])
 
   @@index([academicYearId])
+  @@index([schoolId])
   @@map("timetable_configurations")
 }
 
 model TimetableSlot {
   id                String             @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   classId           String
   subjectId         String
   teacherId         String
@@ -481,11 +710,16 @@ model TimetableSlot {
   @@index([teacherId, academicYearId])
   @@index([academicYearId])
   @@index([roomId])
+  @@index([schoolId])
   @@map("timetable_slots")
 }
 
 model LessonLog {
   id              String         @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   timetableSlotId String
   date            DateTime
   topic           String
@@ -498,13 +732,18 @@ model LessonLog {
 
   @@unique([timetableSlotId, date])
   @@index([timetableSlotId])
+  @@index([schoolId])
   @@map("lesson_logs")
 }
 
 model Room {
   id             String          @id @default(cuid())
-  name           String          @unique
-  code           String?         @unique
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  name           String
+  code           String?
   type           RoomType        @default(REGULAR_CLASSROOM)
   capacity       Int?
   building       String?
@@ -515,11 +754,18 @@ model Room {
   updatedAt      DateTime        @updatedAt
   timetableSlots TimetableSlot[]
 
+  @@unique([schoolId, name])
+  @@unique([schoolId, code])
+  @@index([schoolId])
   @@map("rooms")
 }
 
 model TimeSlot {
   id                  String               @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   startTime           String
   endTime             String
   label               String
@@ -527,12 +773,17 @@ model TimeSlot {
   classTimetables     ClassTimetable[]
   secondaryTimetables SecondaryTimetable[]
 
-  @@unique([startTime, endTime])
+  @@unique([schoolId, startTime, endTime])
+  @@index([schoolId])
   @@map("time_slots")
 }
 
 model ClassTimetable {
   id             String          @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   classId        String
   academicYearId String
   termId         String
@@ -552,11 +803,16 @@ model ClassTimetable {
   @@unique([classId, termId, dayOfWeek, timeSlotId])
   @@index([classId, termId])
   @@index([teacherId])
+  @@index([schoolId])
   @@map("class_timetables")
 }
 
 model SecondaryTimetable {
   id             String         @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   classId        String
   subjectId      String
   teacherId      String
@@ -578,11 +834,16 @@ model SecondaryTimetable {
   @@index([classId, termId])
   @@index([teacherId, termId])
   @@index([subjectId])
+  @@index([schoolId])
   @@map("secondary_timetables")
 }
 
 model SubjectPeriodRequirement {
   id             String   @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   gradeId        String
   subjectId      String
   periodsPerWeek Int
@@ -593,11 +854,16 @@ model SubjectPeriodRequirement {
 
   @@unique([gradeId, subjectId])
   @@index([gradeId])
+  @@index([schoolId])
   @@map("subject_period_requirements")
 }
 
 model Assessment {
   id             String                    @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   title          String
   description    String?
   subjectId      String
@@ -620,11 +886,16 @@ model Assessment {
   @@index([subjectId, termId])
   @@index([assessmentDate])
   @@index([status])
+  @@index([schoolId])
   @@map("assessments")
 }
 
 model AssessmentWindow {
   id        String   @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   termId    String
   examType  ExamType
   opensAt   DateTime
@@ -636,11 +907,16 @@ model AssessmentWindow {
 
   @@unique([termId, examType])
   @@index([termId])
+  @@index([schoolId])
   @@map("assessment_windows")
 }
 
 model StudentAssessmentResult {
   id            String     @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   studentId     String
   assessmentId  String
   subjectId     String?
@@ -656,11 +932,16 @@ model StudentAssessmentResult {
   @@unique([studentId, assessmentId])
   @@index([studentId, assessmentId])
   @@index([assessmentId])
+  @@index([schoolId])
   @@map("student_assessment_results")
 }
 
 model ReportCard {
   id                  String              @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   studentId           String
   classId             String
   termId              String
@@ -689,11 +970,16 @@ model ReportCard {
   @@unique([studentId, termId])
   @@index([classId, termId])
   @@index([academicYearId])
+  @@index([schoolId])
   @@map("report_cards")
 }
 
 model ReportCardSubject {
   id           String     @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   reportCardId String
   subjectId    String
   catMark      Float?
@@ -715,11 +1001,16 @@ model ReportCardSubject {
   subject      Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   @@unique([reportCardId, subjectId])
+  @@index([schoolId])
   @@map("report_card_subjects")
 }
 
 model AttendanceRecord {
   id              String           @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   studentId       String
   classId         String
   termId          String
@@ -742,6 +1033,7 @@ model AttendanceRecord {
   @@index([date])
   @@index([markedById])
   @@index([timetableSlotId])
+  @@index([schoolId])
   @@map("attendance_records")
 }
 
@@ -757,6 +1049,10 @@ model RolePermission {
 
 model UserPermission {
   id          String          @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   userId      String
   permission  Permission
   grantedById String?
@@ -767,22 +1063,29 @@ model UserPermission {
   grantedBy   TeacherProfile? @relation("PermissionGrants", fields: [grantedById], references: [id])
   user        User            @relation("UserPermissions", fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, permission])
+  @@unique([schoolId, userId, permission])
   @@index([userId])
   @@index([grantedById])
   @@index([expiresAt])
+  @@index([schoolId])
   @@map("user_permissions")
 }
 
 model SystemSettings {
   id        String   @id @default(cuid())
-  key       String   @unique
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  key       String
   value     Json
   category  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([schoolId, key])
   @@index([category])
+  @@index([schoolId])
   @@map("system_settings")
 }
 
@@ -804,6 +1107,10 @@ model EczGradingScheme {
 
 model SMSLog {
   id          String      @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   guardianId  String
   studentId   String?
   phoneNumber String
@@ -825,12 +1132,17 @@ model SMSLog {
   @@index([status])
   @@index([createdAt])
   @@index([sentBy])
+  @@index([schoolId])
   @@map("sms_logs")
 }
 
 model SMSTemplate {
   id          String   @id @default(cuid())
-  name        String   @unique
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  name        String
   description String?
   template    String
   variables   String[] @default([])
@@ -839,13 +1151,19 @@ model SMSTemplate {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@unique([schoolId, name])
   @@index([category])
   @@index([isActive])
+  @@index([schoolId])
   @@map("sms_templates")
 }
 
 model Notification {
   id                String               @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   senderId          String
   recipientId       String
   subject           String
@@ -865,6 +1183,7 @@ model Notification {
   @@index([senderId])
   @@index([createdAt])
   @@index([type])
+  @@index([schoolId])
   @@map("notifications")
 }
 

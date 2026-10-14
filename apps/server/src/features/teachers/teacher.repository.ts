@@ -206,13 +206,13 @@ export class TeacherRepository {
   }
 
   /**
-   * Reset a teacher's login password to a given hash and mark it as a
-   * default password requiring change on next login
+   * Set a teacher's login password to a one-time password hash that must be
+   * changed at next login and stops working at `expiresAt`
    */
-  async resetPassword(userId: string, passwordHash: string): Promise<void> {
+  async resetPassword(userId: string, passwordHash: string, expiresAt: Date): Promise<void> {
     await prisma.user.update({
       where: { id: userId },
-      data: { passwordHash, hasDefaultPassword: true },
+      data: { passwordHash, hasDefaultPassword: true, temporaryPasswordExpiresAt: expiresAt },
     });
   }
 

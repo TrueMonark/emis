@@ -46,7 +46,8 @@ You need Node.js 20 or newer and PostgreSQL.
 | New database change | edit `apps/server/prisma/schema.prisma`, then `npm run db:migrate` |
 
 **Tests** use their own database, which they wipe between tests. Copy `apps/server/.env.test.example` to
-`apps/server/.env.test` and point it at a database whose name ends in `_test`.
+`apps/server/.env.test` and point it at an empty database whose name ends in `_test`. `npm test`
+creates and updates its tables itself (`tests/global-setup.ts`).
 
 ## Production
 

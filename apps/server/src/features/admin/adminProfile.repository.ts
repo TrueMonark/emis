@@ -137,6 +137,7 @@ export const adminProfileRepository = {
       data: {
         passwordHash,
         hasDefaultPassword: false,
+        temporaryPasswordExpiresAt: null,
       },
     });
   },

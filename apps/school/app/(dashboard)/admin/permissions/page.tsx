@@ -176,7 +176,6 @@ export default function PermissionsManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Roles</SelectItem>
-                    <SelectItem value="ADMIN">Administrator</SelectItem>
                     <SelectItem value="HEAD_TEACHER">Head Teacher</SelectItem>
                     <SelectItem value="DEPUTY_HEAD">Deputy Head</SelectItem>
                     <SelectItem value="TEACHER">Teacher</SelectItem>

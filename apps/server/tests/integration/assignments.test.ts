@@ -103,11 +103,11 @@ describe("assignments routes", () => {
     expect(updated.status).toBe(200);
     expect(updated.json.data.teacherId).toBe(otherTeacher.teacherProfile!.id);
 
-    // Delete requires ADMIN/HEAD_TEACHER — DEPUTY_HEAD can manage/update but not delete.
+    // Delete requires a school leader (head teacher or deputy — same rights since 3a).
     const deniedDelete = await callRoute(deleteAssignment, {
       method: "DELETE",
       url: `/api/assignments/${assignmentId}`,
-      token: deputyHeadToken,
+      token: teacherToken,
       params: { id: assignmentId },
     });
     expect(deniedDelete.status).toBe(403);

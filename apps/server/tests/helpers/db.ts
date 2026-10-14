@@ -1,4 +1,5 @@
-import prisma from "@/lib/db/prisma";
+import prisma, { systemPrisma } from "@/lib/db/prisma";
+import { currentTenant, runWithTenant, setTestFallbackTenant } from "@/lib/db/tenant";
 import bcrypt from "bcryptjs";
 import {
   Role,
@@ -14,24 +15,62 @@ import {
   ECZGrade,
 } from "@prisma/client";
 
+/** The school every test works in unless it says otherwise (see resetDb). */
+export const TEST_SCHOOL_ID = "school-test-a";
+/** District the migration creates for schools whose district isn't set yet. */
+const UNASSIGNED_DISTRICT_ID = "office-district-unassigned";
+
 /**
- * Truncates every app table (discovered dynamically, so this doesn't drift
- * as the schema grows) except Prisma's own migration-tracking table. Call
- * in `beforeEach` — repositories share the module-level `prisma` singleton
- * rather than accepting an injectable per-test client, so transaction
- * rollback isolation isn't available; this is the pragmatic alternative.
+ * Truncates every app table (discovered dynamically, so this doesn't drift as the schema grows)
+ * except Prisma's own migration-tracking table and the national office list the migration
+ * created, then creates the test school and makes it the database context for code that runs
+ * outside a request (fixtures, direct service calls). Call in `beforeEach` — repositories share
+ * the module-level `prisma` singleton rather than accepting an injectable per-test client, so
+ * transaction rollback isolation isn't available; this is the pragmatic alternative.
+ *
+ * Uses `systemPrisma` (not restricted to a school): the tenant client can only see one school.
  */
 export async function resetDb(): Promise<void> {
+  setTestFallbackTenant(null);
   // tablename::text cast works around Prisma's query engine failing to
   // deserialize Postgres's internal `name` column type against PG 18.
-  const tables = await prisma.$queryRaw<{ tablename: string }[]>`
-    SELECT tablename::text FROM pg_tables WHERE schemaname = 'public' AND tablename != '_prisma_migrations'
+  const tables = await systemPrisma.$queryRaw<{ tablename: string }[]>`
+    SELECT tablename::text FROM pg_tables
+    WHERE schemaname = 'public' AND tablename NOT IN ('_prisma_migrations', 'education_offices')
   `;
 
-  if (tables.length === 0) return;
+  if (tables.length > 0) {
+    const tableList = tables.map((t) => `"${t.tablename}"`).join(", ");
+    await systemPrisma.$executeRawUnsafe(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
+  }
 
-  const tableList = tables.map((t) => `"${t.tablename}"`).join(", ");
-  await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
+  await createTestSchool({ id: TEST_SCHOOL_ID, name: "Test School A" });
+  setTestFallbackTenant({ schoolId: TEST_SCHOOL_ID, userId: null });
+}
+
+/** Creates a school (global table, so via the system client). */
+export async function createTestSchool(options: { id?: string; name?: string } = {}) {
+  return systemPrisma.school.create({
+    data: {
+      id: options.id ?? `school-${crypto.randomUUID().slice(0, 8)}`,
+      name: options.name ?? "Another Test School",
+      districtOfficeId: UNASSIGNED_DISTRICT_ID,
+    },
+  });
+}
+
+/**
+ * Runs `fn` with another school as the context for fixtures and direct calls (e.g. to set up a
+ * second school's data), then restores the previous context.
+ */
+export async function inSchool<T>(schoolId: string, fn: () => Promise<T>): Promise<T> {
+  const previous = currentTenant();
+  setTestFallbackTenant({ schoolId, userId: null });
+  try {
+    return await runWithTenant({ schoolId, userId: null }, fn);
+  } finally {
+    setTestFallbackTenant(previous);
+  }
 }
 
 const TEST_PASSWORD = "TestPassword123!";
@@ -41,6 +80,8 @@ export interface CreateTestUserOptions {
   role?: Role;
   password?: string;
   isActive?: boolean;
+  /** School to be an ACTIVE member of; defaults to the current test school. null = none. */
+  schoolId?: string | null;
 }
 
 /** Creates a User (+ TeacherProfile for teacher-ish roles) with a real bcrypt hash. */
@@ -51,16 +92,24 @@ export async function createTestUser(options: CreateTestUserOptions = {}) {
     password = TEST_PASSWORD,
     isActive = true,
   } = options;
+  const schoolId = options.schoolId === undefined ? currentTenant().schoolId : options.schoolId;
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  const user = await prisma.user.create({
+  // Users and memberships are global tables (read before the school is known, at sign-in).
+  const user = await systemPrisma.user.create({
     data: { email, passwordHash, role, isActive },
   });
+  if (schoolId) {
+    await systemPrisma.schoolMembership.create({
+      data: { userId: user.id, schoolId, role, status: "ACTIVE" },
+    });
+  }
 
   let teacherProfile = null;
   if (role !== Role.CLERK) {
-    teacherProfile = await prisma.teacherProfile.create({
+    // In the user's own school's context, so the new profile is visible to it.
+    teacherProfile = await runWithTenant({ schoolId, userId: user.id }, () => prisma.teacherProfile.create({
       data: {
         userId: user.id,
         staffNumber: `T-${crypto.randomUUID().slice(0, 8)}`,
@@ -73,7 +122,7 @@ export async function createTestUser(options: CreateTestUserOptions = {}) {
         hireDate: new Date("2020-01-01"),
         status: StaffStatus.ACTIVE,
       },
-    });
+    }));
   }
 
   return { user, teacherProfile, password };

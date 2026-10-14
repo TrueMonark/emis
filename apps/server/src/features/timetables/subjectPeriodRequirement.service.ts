@@ -1,6 +1,7 @@
 import { SubjectPeriodRequirement } from "@school/shared/types/prisma-enums";
 import { subjectPeriodRequirementRepository } from "./subjectPeriodRequirement.repository";
 import prisma from "@/lib/db/prisma";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * SubjectPeriodRequirement Service
@@ -61,7 +62,7 @@ export class SubjectPeriodRequirementService {
    * Check if user can manage requirements
    */
   private canManageRequirements(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**

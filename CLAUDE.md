@@ -52,10 +52,46 @@ Coming next: `apps/office/` (DEBS + PEO, one app, scope decides what you see).
   `toLocaleString`, never the browser default or `"en-US"`. On the **server** (PDFs, CSVs, SMS,
   error messages) also pass `timeZone: "Africa/Lusaka"` — the host clock may be UTC, which shifts
   times by two hours and late-evening dates by a day.
+- **Branding:** the sidebar header is `components/layout/sidebar-brand.tsx`. It shows the Monark Devs
+  mark, the signed-in person's school name (`GET /api/school/identity`, `hooks/useSchoolIdentity.ts`)
+  and "Monark Devs" underneath. Sign-in pages end with `MonarkDevsCredit`
+  (`components/layout/monark-devs-credit.tsx`). Brand images are in
+  `apps/school/public/brand/`. The brand is spelled **Monark Devs** (with a k).
 - **No school's details in code.** Never hard-code a school name, logo, motto or contact as a
   default; use `SCHOOL_NAME_NOT_SET` (`@school/shared/format`) when the name is missing.
 - Inside `apps/server`, `@/…` means `apps/server/src/…`. Inside `apps/school`, `@/…` means
   `apps/school/…`. Shared code is always imported as `@school/shared/<path>`.
+
+## Many schools, one database (Phase 3a, since 2026-10-15) — read before any data change
+
+- **Every school-owned table has `schoolId`**, and PostgreSQL **row-level security** shows a
+  query only the current school's rows (`src/lib/db/tenant.ts`). `withAuth` finds the person's
+  ACTIVE `SchoolMembership` and runs the request inside that school; the default `prisma` client
+  wraps every query in a transaction that sets the school (`SET LOCAL ROLE emis_app`,
+  `app.school_id`). New rows get the school's id from the column default, so code never sets it.
+- **National (global) tables:** users, school_memberships, schools, education_offices, grades
+  (until Phase 3b), role_permissions, ECZ grading schemes. `teacher_profiles` belongs to the
+  person: a school sees the profiles of its current and former members.
+- **A new school-owned model** needs: `schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))`
+  plus the `school` relation and `@@index([schoolId])`; uniques made per school
+  (`@@unique([schoolId, code])`); and, in its migration, `ENABLE ROW LEVEL SECURITY` with the
+  same `school_isolation` policy as the others (copy from
+  `migrations/20261012180000_phase3a_schools_and_isolation`). Without the policy the table is
+  shared across schools.
+- **Users are national:** any list or lookup of users must be limited to the school's members
+  (see `inCurrentSchool()` in `features/permissions/user.repository.ts`). Email is unique
+  nationally (one login per person).
+- **A person's role is per school** (`SchoolMembership.role`; `User.role` mirrors the ACTIVE one).
+  At most one ACTIVE membership per person (database trigger); a transfer waits as PENDING.
+- **`systemPrisma`** (from `lib/db/prisma.ts`) is not restricted: only for the seed, test resets
+  and maintenance scripts — never in `src/features` or `src/api`.
+- **Code outside a request has no school**: school-owned tables look empty and inserts fail.
+  Background work must run inside `runWithTenant({ schoolId, userId }, …)` for one school.
+- **No module-level caches of school data** unless keyed by school (see
+  `lib/settings/school-info-helper.ts`).
+- Head teacher and deputy head have **the same rights**: check with `isSchoolLeader(role)`
+  (`@school/shared/auth/role-hierarchy`), never one specific leadership role. `ADMIN` is the
+  old name for the head's account and is no longer given to anyone.
 
 ## Stack
 
@@ -109,8 +145,8 @@ never implemented; they were deleted (2026-07-06) rather than built out, because
 already works, split across three genuinely-used mechanisms. Know all three before touching auth
 code:
 
-1. **Role hierarchy** (`packages/shared/src/auth/role-hierarchy.ts`) — `ADMIN > HEAD_TEACHER > DEPUTY_HEAD >
-   {TEACHER, CLERK}`. Checked via `requireAnyRole`/`requireMinimumRole`/`hasRoleAuthority`
+1. **Role hierarchy** (`packages/shared/src/auth/role-hierarchy.ts`) — `HEAD_TEACHER = DEPUTY_HEAD`
+   (= the retired `ADMIN`) `> {TEACHER, CLERK}`; the role is the person's role at their school. Checked via `requireAnyRole`/`requireMinimumRole`/`hasRoleAuthority`
    (`apps/server/src/lib/auth/authorization.ts`). This is what most service-layer checks use.
 2. **HOD position** (`apps/server/src/lib/auth/position-helpers.ts`) — HOD is NOT a role (removed from the `Role`
    enum in migration `remove_hod_from_role_enum`). It's derived live from
@@ -196,6 +232,13 @@ drift) was deleted 2026-07-09 for exactly this reason.
   Repositories share one module-level `prisma` singleton rather than accepting an injectable
   per-call client, so transaction-rollback isolation isn't available; don't try to work around this
   per-test, extend `resetDb()`/the fixtures instead if something new is needed.
+- **Schools in tests**: `resetDb()` creates "Test School A" and makes it the context for fixtures
+  and direct calls; `createTestUser` makes the user an ACTIVE member of it (or of `schoolId`).
+  For a second school use `createTestSchool()` and `inSchool(id, fn)`. Isolation is covered by
+  `tests/integration/school-isolation.test.ts` — extend it when adding school-owned data.
+- **Test database tables**: `tests/global-setup.ts` runs `prisma migrate deploy` against the
+  `.env.test` database once per run (refusing any name not ending in `_test`), so a fresh test DB
+  needs no manual step and new migrations are picked up.
 - **Test database only**: `tests/setup.ts` loads `apps/server/.env.test` (a separate local Postgres DB, name
   ending in `_test`) before anything else and refuses to run if `DATABASE_URL` doesn't look like a
   test DB. Never point `.env.test` at the dev/prod database — `resetDb()` will wipe it.
@@ -213,16 +256,24 @@ drift) was deleted 2026-07-09 for exactly this reason.
 - Every route authenticates via `withAuth`, no exceptions, including internal/admin/debug tooling.
 - Every service method that reads or writes data the user shouldn't universally see calls a
   permission/role check — including list/read endpoints, not just create/update/delete.
-- Default passwords (e.g. new teacher accounts) must force a change before any other action
-  succeeds — don't just set a flag and trust the client to enforce it.
+- **One-time passwords, never shared defaults.** Every new account and every reset gets its own
+  random password from `features/auth/one-time-password.ts` (`issueOneTimePassword`), returned
+  once in the API response for the person who created/reset it, optionally sent by SMS, and
+  expiring after `OTP_TTL_HOURS` (default 24; `User.temporaryPasswordExpiresAt`). Never add a
+  fixed password (`teacher123` was removed 2026-10-12).
+- **Forced change is enforced by the server.** While `User.hasDefaultPassword` is true, `withAuth`
+  answers every route except `/api/auth/me` and `/api/auth/change-password` with 403
+  `PASSWORD_CHANGE_REQUIRED` (header `X-Password-Change-Required`, constants in
+  `@school/shared/auth/password-change`); `authFetch` sends the person to `/change-password`.
+  Any new account-creating path (office accounts in Phase 4) must use the same mechanism.
 - No secrets, tokens, or real credentials in code, comments, or scripts, even for local dev — use
   `.env` (already gitignored) and clearly-fake placeholder values in seed scripts.
 - The seed (`prisma/seed.ts`) has no fixed passwords: it uses `SEED_DEMO_PASSWORD` or prints a
   random one, marks demo accounts `hasDefaultPassword`, and refuses non-local databases unless
   `SEED_ALLOW_REMOTE=true`. Keep it that way.
-- **Known gap (planned for Phase 4, account chain):** `hasDefaultPassword` is only enforced by the
-  screens (a prompt), not by the server. The server must block everything except changing the
-  password until it's changed.
+- **Still planned (Phase 4):** the "Forgot password?" request flow through head/deputy → DEBS
+  (`docs/design/phase-3-foundation.md` §3b). Until then `/forgot-password` tells people to ask
+  their head teacher or deputy head, who resets from the Teachers page.
 
 ## Server-side PDF generation
 

@@ -6,6 +6,7 @@ import { Role } from "@school/shared/types/prisma-enums";
 import { SmsGatewayService } from "@/features/sms/smsGateway.service";
 import { AfricasTalkingService } from "@/features/sms/africasTalking.service";
 import { loadSmsConfig } from "@/lib/sms/sms-config";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * POST /api/admin/settings/sms/test-send
@@ -14,7 +15,7 @@ import { loadSmsConfig } from "@/lib/sms/sms-config";
 export async function POST(request: Request) {
   return withAuth(async (req, user) => {
     try {
-      if (user.role !== Role.ADMIN) throw new UnauthorizedError("Admin only");
+      if (!isSchoolLeader(user.role)) throw new UnauthorizedError("Admin only");
 
       const body = await request.json();
       const { phone, message, provider } = body as {

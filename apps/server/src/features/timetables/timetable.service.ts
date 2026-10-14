@@ -9,6 +9,7 @@ import { UnauthorizedError, NotFoundError, ValidationError, ConflictError } from
 import { isHOD } from "@/lib/auth/position-helpers";
 import { solve, toTimetableSlotEntries, generateReport, PeriodSlot, DoublePeriodConfig } from "./solver";
 import { logger } from "@/lib/logger/logger";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * Timetable Service - Business Logic Layer
@@ -97,15 +98,15 @@ export class TimetableService {
   // ==================== PERMISSION CHECKS ====================
 
   private canManageRooms(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   private canConfigureTimetable(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   private canGenerateTimetable(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**
@@ -114,7 +115,7 @@ export class TimetableService {
    * TEACHER can view if they are HOD (position-based check)
    */
   private async canViewAllTimetables(context: ServiceContext): Promise<boolean> {
-    if (["ADMIN", "HEAD_TEACHER", "DEPUTY_HEAD"].includes(context.role)) {
+    if (isSchoolLeader(context.role)) {
       return true;
     }
 
@@ -834,7 +835,7 @@ export class TimetableService {
   }
 
   private canEditTimetable(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**

@@ -12,7 +12,6 @@ import { Skeleton } from "@school/ui/components/skeleton";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ChangePasswordCard } from "@/components/profile/change-password-card";
-import { PasswordChangePrompt } from "@/components/profile/password-change-prompt";
 import { authFetch } from "@/lib/api-client";
 
 interface TeacherProfile {
@@ -53,20 +52,9 @@ export default function TeacherProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [hasDefaultPassword, setHasDefaultPassword] = useState(false);
 
   useEffect(() => {
     fetchProfile();
-    // Check if user has default password from localStorage
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      try {
-        const user = JSON.parse(userData);
-        setHasDefaultPassword(user.hasDefaultPassword || false);
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-      }
-    }
   }, []);
 
   const fetchProfile = async () => {
@@ -178,7 +166,6 @@ export default function TeacherProfilePage() {
   return (
     <div className="space-y-4 px-4 lg:px-0 lg:space-y-6">
       {/* Password Change Prompt Dialog */}
-      <PasswordChangePrompt hasDefaultPassword={hasDefaultPassword} />
 
       {/* Header — desktop only */}
       <div className="hidden lg:flex items-start justify-between mt-2">

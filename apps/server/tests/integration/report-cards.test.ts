@@ -302,12 +302,12 @@ describe("report-cards routes", () => {
       expect(await prisma.reportCard.count({ where: { classId } })).toBe(8);
     });
 
-    it("is admin-only — a DEPUTY_HEAD is refused and nothing is deleted", async () => {
+    it("is for school leaders only — a TEACHER is refused and nothing is deleted", async () => {
       await seedCards();
       const denied = await callRoute(bulkDelete, {
         method: "DELETE",
         url: "/api/report-cards/bulk",
-        token: deputyHeadToken,
+        token: teacherToken,
         body: { filters: { classId } },
       });
       expect(denied.status).toBe(403);

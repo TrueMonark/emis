@@ -3,6 +3,7 @@ import { ApiResponse } from "@/lib/http/api-response";
 import { handleApiError } from "@/lib/http/error-handler";
 import { adminAttendanceAnalyticsService } from "@/features/admin/admin-attendance-analytics.service";
 import { logger } from "@/lib/logger/logger";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * GET /api/admin/attendance/analytics
@@ -50,7 +51,7 @@ export async function GET(request: Request) {
       });
 
       // Check if user has admin permissions
-      if (!["ADMIN", "HEAD_TEACHER", "DEPUTY_HEAD"].includes(user.role)) {
+      if (!isSchoolLeader(user.role)) {
         return ApiResponse.error("Unauthorized. Admin access required.", 403);
       }
 

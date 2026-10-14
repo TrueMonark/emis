@@ -7,7 +7,8 @@ import { AuthContext } from "@/lib/auth/authorization";
 
 /**
  * POST /api/teachers/[id]/reset-password
- * Admin-only: reset a teacher's password to the default and notify them via SMS.
+ * Head teacher / deputy head: issue a new one-time password for a teacher. The password is in
+ * the response once (to hand over); the teacher must change it at next login.
  */
 export const POST = withAuth(
   async (request: Request, user, { params }) => {
@@ -15,9 +16,9 @@ export const POST = withAuth(
       const { id } = await params;
       const context: AuthContext = { userId: user.userId, role: user.role as Role };
 
-      await teacherService.resetPassword(id, context);
+      const issued = await teacherService.resetPassword(id, context);
 
-      return ApiResponse.success({ message: "Password reset successfully" });
+      return ApiResponse.success(issued);
     } catch (error) {
       return handleApiError(error, {
         userId: user.userId,

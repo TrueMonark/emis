@@ -1,4 +1,5 @@
 "use client";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@school/ui/components/card";
@@ -66,7 +67,6 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
 // NOTE: HOD is NOT included - it's a position, not a role
 // To assign someone as HOD, use Department management to set hodTeacherId
 const ROLES = [
-  { value: "ADMIN", label: "Administrator", color: "destructive" },
   { value: "HEAD_TEACHER", label: "Head Teacher", color: "default" },
   { value: "DEPUTY_HEAD", label: "Deputy Head", color: "secondary" },
   { value: "TEACHER", label: "Teacher", color: "outline" },
@@ -82,8 +82,8 @@ export function RoleAssignment({ user, onUpdate }: RoleAssignmentProps) {
   const handleRoleChange = async () => {
     if (!selectedRole || selectedRole === user.role) return;
 
-    // Safety check for ADMIN and HEAD_TEACHER
-    if (user.role === "ADMIN" || user.role === "HEAD_TEACHER") {
+    // Safety check when changing a school leader's role
+    if (isSchoolLeader(user.role)) {
       const confirmMessage = `Are you sure you want to change this user's role from ${user.role}? This is a critical role change.`;
       if (!confirm(confirmMessage)) {
         setSelectedRole(user.role);
@@ -114,7 +114,7 @@ export function RoleAssignment({ user, onUpdate }: RoleAssignmentProps) {
   };
 
   const isRoleChanged = selectedRole !== user.role;
-  const isCriticalRole = user.role === "ADMIN" || user.role === "HEAD_TEACHER";
+  const isCriticalRole = isSchoolLeader(user.role);
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:gap-6 lg:grid-cols-2">

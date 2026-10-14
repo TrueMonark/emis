@@ -3,6 +3,7 @@ import { userPermissionRepository } from "./userPermission.repository";
 import { Role, Permission } from "@school/shared/types/prisma-enums";
 import { ForbiddenError, NotFoundError, ValidationError, ConflictError } from "@/lib/http/errors";
 import { AuthContext } from "@/lib/auth/authorization";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 export interface UserFilters {
   search?: string;
@@ -30,13 +31,13 @@ export interface AddOverrideInput {
  */
 export class UserManagementService {
   private requireManagePermissions(context: AuthContext) {
-    if (!["ADMIN", "HEAD_TEACHER"].includes(context.role)) {
+    if (!isSchoolLeader(context.role)) {
       throw new ForbiddenError("Insufficient permissions to manage user permissions");
     }
   }
 
   private requireAdmin(context: AuthContext) {
-    if (context.role !== "ADMIN") {
+    if (!isSchoolLeader(context.role)) {
       throw new ForbiddenError("Only administrators can perform this action");
     }
   }
@@ -130,10 +131,15 @@ export class UserManagementService {
       throw new ValidationError("Cannot change your own role");
     }
 
-    if (existingUser.role === "ADMIN" && role !== "ADMIN") {
-      const adminCount = await userRepository.countActiveAdmins();
-      if (adminCount <= 1) {
-        throw new ValidationError("Cannot change the role of the last active administrator");
+    if (role === "ADMIN") {
+      // ADMIN is the old name for the head's role; schools use HEAD_TEACHER / DEPUTY_HEAD.
+      throw new ValidationError("Use Head Teacher or Deputy Head instead of Admin");
+    }
+
+    if (isSchoolLeader(existingUser.role) && !isSchoolLeader(role)) {
+      const leaderCount = await userRepository.countActiveAdmins();
+      if (leaderCount <= 1) {
+        throw new ValidationError("Cannot change the role of the school's last head teacher or deputy head");
       }
     }
 

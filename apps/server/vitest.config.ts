@@ -5,6 +5,8 @@ export default defineConfig({
   resolve: { tsconfigPaths: true },
   test: {
     environment: "node",
+    // Creates/updates the test database's tables once per run (from prisma/migrations).
+    globalSetup: ["tests/global-setup.ts"],
     setupFiles: ["tests/setup.ts"],
     include: ["tests/integration/**/*.test.ts"],
     // Integration tests hit a real Postgres DB sequentially per file (resetDb()

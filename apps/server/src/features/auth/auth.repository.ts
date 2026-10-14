@@ -1,4 +1,5 @@
 import prisma from "@/lib/db/prisma";
+import { isSchoolLeader, SCHOOL_LEADER_ROLES } from "@school/shared/auth/role-hierarchy";
 import { User, Role } from "@school/shared/types/prisma-enums";
 
 export interface UserWithProfile extends User {
@@ -75,7 +76,7 @@ export class AuthRepository {
   async updatePassword(userId: string, passwordHash: string): Promise<void> {
     await prisma.user.update({
       where: { id: userId },
-      data: { passwordHash, hasDefaultPassword: false },
+      data: { passwordHash, hasDefaultPassword: false, temporaryPasswordExpiresAt: null },
     });
   }
 
@@ -94,9 +95,11 @@ export class AuthRepository {
    * Get user permissions (role-based + user-specific overrides)
    */
   async getUserPermissions(userId: string, role: Role): Promise<string[]> {
-    // Get role-based permissions
+    // Get role-based permissions. Head teacher and deputy head have the same rights, so a
+    // school leader gets the permissions of every leadership role (incl. the old ADMIN).
+    const roles = isSchoolLeader(role) ? [...SCHOOL_LEADER_ROLES] : [role];
     const rolePermissions = await prisma.rolePermission.findMany({
-      where: { role },
+      where: { role: { in: roles } },
       select: { permission: true },
     });
 

@@ -1,6 +1,7 @@
 import { ClassTimetable, DayOfWeek } from "@school/shared/types/prisma-enums";
 import { classTimetableRepository } from "./classTimetable.repository";
 import prisma from "@/lib/db/prisma";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * ClassTimetable Service - PRIMARY SCHOOL (Grades 1-7)
@@ -53,7 +54,7 @@ export class ClassTimetableService {
    * Check if user can manage timetables
    */
   private canManageTimetable(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER", "DEPUTY_HEAD"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**

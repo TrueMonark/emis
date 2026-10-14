@@ -6,6 +6,7 @@ import { classRepository } from "../classes/class.repository";
 import { academicYearRepository } from "../academic-years/academicYear.repository";
 import { UnauthorizedError, NotFoundError, ValidationError, ConflictError } from "@/lib/errors";
 import { getErrorMessage } from "@school/shared/format";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * Enrollment Service - Business Logic Layer
@@ -69,7 +70,7 @@ export class EnrollmentService {
    * Check if user can delete enrollments
    */
   private canDelete(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   // ==================== VALIDATION ====================

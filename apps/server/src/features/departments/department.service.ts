@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { Department, DepartmentStatus } from "@school/shared/types/prisma-enums";
 import { departmentRepository } from "./department.repository";
 import { UnauthorizedError, NotFoundError, ValidationError } from "@/lib/errors";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * Department Service - Business Logic Layer
@@ -51,7 +52,7 @@ export class DepartmentService {
    * Only ADMIN and HEAD_TEACHER can create departments
    */
   private canCreate(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**
@@ -59,7 +60,7 @@ export class DepartmentService {
    * Only ADMIN and HEAD_TEACHER can update departments
    */
   private canUpdate(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**
@@ -67,7 +68,7 @@ export class DepartmentService {
    * Only ADMIN can delete departments
    */
   private canDelete(context: ServiceContext): boolean {
-    return context.role === "ADMIN";
+    return isSchoolLeader(context.role);
   }
 
   // ==================== VALIDATION ====================
@@ -473,7 +474,7 @@ export class DepartmentService {
    * the sensitivity of directly editing staff department membership.
    */
   async addMembers(departmentId: string, teacherIds: string[], context: ServiceContext) {
-    if (context.role !== "ADMIN") {
+    if (!isSchoolLeader(context.role)) {
       throw new UnauthorizedError("Only administrators can manage department members");
     }
 
@@ -503,7 +504,7 @@ export class DepartmentService {
    * Remove a teacher from a department. Restricted to ADMIN.
    */
   async removeMember(departmentId: string, teacherId: string, context: ServiceContext) {
-    if (context.role !== "ADMIN") {
+    if (!isSchoolLeader(context.role)) {
       throw new UnauthorizedError("Only administrators can manage department members");
     }
 

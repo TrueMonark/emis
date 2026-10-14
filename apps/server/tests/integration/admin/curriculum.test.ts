@@ -204,14 +204,14 @@ describe("admin/curriculum", () => {
     }
   });
 
-  it("rejects curriculum writes from HEAD_TEACHER — ADMIN only", async () => {
+  it("rejects curriculum writes from a TEACHER — school leaders only", async () => {
     const grade = await createTestGrade();
     const subject = await createTestSubject();
 
     const { status } = await callRoute(assignSubject, {
       method: "POST",
       url: "/api/admin/curriculum",
-      token: headTeacherToken,
+      token: teacherToken,
       body: { gradeId: grade.id, subjectId: subject.id, isCore: true },
     });
 

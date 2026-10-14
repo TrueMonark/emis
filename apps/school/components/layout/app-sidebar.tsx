@@ -10,7 +10,6 @@ import {
   UserCheck,
   FileText,
   ClipboardList,
-  Webhook,
   Building2,
   CalendarCheck,
   BarChart3,
@@ -30,6 +29,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@school/ui/components/sidebar";
+import { SidebarBrand } from "@/components/layout/sidebar-brand";
 import { NavUser } from "@/components/layout/nav-user";
 
 interface SidebarComponentProps extends React.ComponentProps<typeof Sidebar> {
@@ -188,15 +188,7 @@ function SidebarHeaderContent() {
         <div className="group/header relative">
           <SidebarMenuButton size="lg" asChild>
             <a href="/admin">
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground group-hover/header:opacity-0 transition-opacity">
-                <Webhook className="size-4" />
-              </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">Monarch Devs</span>
-                <span className="truncate text-xs">
-                  School Management System
-                </span>
-              </div>
+              <SidebarBrand />
             </a>
           </SidebarMenuButton>
           <SidebarTrigger className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover/header:opacity-100 transition-opacity data-[state=expanded]:right-1 data-[state=expanded]:left-auto" />

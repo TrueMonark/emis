@@ -10,7 +10,14 @@ import { Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/api-client";
 
-export function ChangePasswordCard() {
+interface ChangePasswordCardProps {
+  /** First login on a one-time password: different wording, and no Cancel button. */
+  firstTime?: boolean;
+  /** Called after the password has been changed. */
+  onChanged?: () => void;
+}
+
+export function ChangePasswordCard({ firstTime = false, onChanged }: ChangePasswordCardProps = {}) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -80,6 +87,7 @@ export function ChangePasswordCard() {
       setNewPassword("");
       setConfirmPassword("");
       setError(null);
+      onChanged?.();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to change password";
       setError(errorMessage);
@@ -101,10 +109,12 @@ export function ChangePasswordCard() {
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
           <Lock className="h-4 w-4" />
-          Change Password
+          {firstTime ? "Choose your own password" : "Change Password"}
         </CardTitle>
         <CardDescription className="text-xs">
-          Update your password to keep your account secure
+          {firstTime
+            ? "You signed in with a one-time password. Choose a password only you know before continuing."
+            : "Update your password to keep your account secure"}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -118,7 +128,7 @@ export function ChangePasswordCard() {
           {/* Current Password */}
           <div className="space-y-2">
             <Label htmlFor="currentPassword" className="text-xs">
-              Current Password
+              {firstTime ? "One-time password" : "Current Password"}
             </Label>
             <div className="relative">
               <Input
@@ -126,7 +136,7 @@ export function ChangePasswordCard() {
                 type={showCurrentPassword ? "text" : "password"}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
+                placeholder={firstTime ? "The password you were given" : "Enter current password"}
                 disabled={isLoading}
                 className="pr-10"
               />
@@ -232,15 +242,17 @@ export function ChangePasswordCard() {
             <Button type="submit" disabled={isLoading} size="sm">
               {isLoading ? "Changing..." : "Change Password"}
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isLoading}
-              size="sm"
-            >
-              Cancel
-            </Button>
+            {!firstTime && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCancel}
+                disabled={isLoading}
+                size="sm"
+              >
+                Cancel
+              </Button>
+            )}
           </div>
         </form>
       </CardContent>

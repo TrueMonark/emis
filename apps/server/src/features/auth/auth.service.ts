@@ -4,6 +4,11 @@ import { authRepository, UserWithProfile } from "./auth.repository";
 import { Role } from "@school/shared/types/prisma-enums";
 import { ValidationError, NotFoundError, UnauthorizedError as InvalidCredentialsError } from "@/lib/http/errors";
 import { logger } from "@/lib/logger/logger";
+import { runWithTenant } from "@/lib/db/tenant";
+import {
+  schoolMembershipRepository,
+  NO_SCHOOL_MESSAGE,
+} from "@/features/schools/schoolMembership.repository";
 
 const rawJwtSecret = process.env.JWT_SECRET;
 if (!rawJwtSecret) {
@@ -72,8 +77,15 @@ export class AuthService {
       };
     }
 
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    // Verify password. One-time passwords are upper-case groups ("K7QP-2MXA-9FHT"); accept
+    // them typed in lower case or with stray spaces, since they are read out over the phone.
+    let isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isPasswordValid && user.hasDefaultPassword && user.temporaryPasswordExpiresAt) {
+      const normalised = password.trim().toUpperCase();
+      if (normalised !== password) {
+        isPasswordValid = await bcrypt.compare(normalised, user.passwordHash);
+      }
+    }
 
     if (!isPasswordValid) {
       return {
@@ -82,45 +94,68 @@ export class AuthService {
       };
     }
 
-    // Check teacher profile status if user is a teacher
-    if (user.profile && user.profile.status !== "ACTIVE") {
+    // An unused one-time password stops working after its expiry.
+    if (
+      user.hasDefaultPassword &&
+      user.temporaryPasswordExpiresAt &&
+      user.temporaryPasswordExpiresAt.getTime() <= Date.now()
+    ) {
       return {
         success: false,
-        message: `Your account status is ${user.profile.status}. Contact administrator.`,
+        message:
+          "Your one-time password has expired. Ask your head teacher or deputy head for a new one.",
       };
     }
 
-    // Get user permissions
-    const permissions = await authRepository.getUserPermissions(user.id, user.role);
+    // The school they work in (their ACTIVE membership). Their role is the membership's role.
+    const membership = await schoolMembershipRepository.findActiveForUser(user.id);
+    if (!membership) {
+      return { success: false, message: NO_SCHOOL_MESSAGE };
+    }
 
-    // Generate JWT token
-    const token = this.generateToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      permissions,
-    });
+    // Profile and permissions are read in the school's context (row-level security).
+    return runWithTenant({ schoolId: membership.schoolId, userId: user.id }, async () => {
+      const current = await authRepository.findUserById(user.id);
+      const profile = current?.profile ?? null;
 
-    // Update last login
-    await authRepository.updateLastLogin(user.id);
+      // Check teacher profile status if user is a teacher
+      if (profile && profile.status !== "ACTIVE") {
+        return {
+          success: false,
+          message: `Your account status is ${profile.status}. Contact administrator.`,
+        };
+      }
 
-    return {
-      success: true,
-      token,
-      user: {
-        id: user.id,
+      const role = membership.role as Role;
+      const permissions = await authRepository.getUserPermissions(user.id, role);
+
+      const token = this.generateToken({
+        userId: user.id,
         email: user.email,
-        role: user.role,
-        hasDefaultPassword: user.hasDefaultPassword,
-        profile: user.profile
-          ? {
-              firstName: user.profile.firstName,
-              lastName: user.profile.lastName,
-              staffNumber: user.profile.staffNumber,
-            }
-          : null,
-      },
-    };
+        role,
+        permissions,
+      });
+
+      await authRepository.updateLastLogin(user.id);
+
+      return {
+        success: true,
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          role,
+          hasDefaultPassword: user.hasDefaultPassword,
+          profile: profile
+            ? {
+                firstName: profile.firstName,
+                lastName: profile.lastName,
+                staffNumber: profile.staffNumber,
+              }
+            : null,
+        },
+      };
+    });
   }
 
   /**
@@ -208,7 +243,11 @@ export class AuthService {
       throw new NotFoundError("User not found");
     }
 
-    const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    let isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isPasswordValid && user.hasDefaultPassword && user.temporaryPasswordExpiresAt) {
+      // Same leniency as login for one-time passwords typed in lower case.
+      isPasswordValid = await bcrypt.compare(currentPassword.trim().toUpperCase(), user.passwordHash);
+    }
     if (!isPasswordValid) {
       throw new InvalidCredentialsError("Current password is incorrect");
     }

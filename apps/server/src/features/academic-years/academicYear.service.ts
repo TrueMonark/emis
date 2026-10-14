@@ -3,6 +3,7 @@ import { AcademicYear } from "@school/shared/types/prisma-enums";
 import { academicYearRepository } from "./academicYear.repository";
 import { UnauthorizedError, NotFoundError, ValidationError, ConflictError } from "@/lib/errors";
 import { logger } from "@/lib/logger/logger";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * Academic Year Service - Business Logic Layer
@@ -50,7 +51,7 @@ export class AcademicYearService {
    * Only ADMIN, HEAD_TEACHER, and DEPUTY_HEAD can manage academic years
    */
   private canManage(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER", "DEPUTY_HEAD"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**
@@ -58,7 +59,7 @@ export class AcademicYearService {
    * Only ADMIN can delete academic years
    */
   private canDelete(context: ServiceContext): boolean {
-    return context.role === "ADMIN";
+    return isSchoolLeader(context.role);
   }
 
   /**
@@ -66,7 +67,7 @@ export class AcademicYearService {
    * Only ADMIN and HEAD_TEACHER can activate/close years
    */
   private canChangeStatus(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   // ==================== VALIDATION ====================

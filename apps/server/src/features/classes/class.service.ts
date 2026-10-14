@@ -8,6 +8,7 @@ import {
   ValidationError,
 } from "@/lib/errors";
 import { isHOD } from "@/lib/auth/position-helpers";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 export interface ClassImportRow {
   name: string;
@@ -69,7 +70,7 @@ export class ClassService {
    * Only ADMIN and HEAD_TEACHER can create classes
    */
   private canCreate(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**
@@ -77,7 +78,7 @@ export class ClassService {
    * Only ADMIN and HEAD_TEACHER can update classes
    */
   private canUpdate(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**
@@ -86,7 +87,7 @@ export class ClassService {
    * TEACHER can assign if they are HOD (position-based check)
    */
   private async canAssignClassTeacher(context: ServiceContext): Promise<boolean> {
-    if (["ADMIN", "HEAD_TEACHER", "DEPUTY_HEAD"].includes(context.role)) {
+    if (isSchoolLeader(context.role)) {
       return true;
     }
 
@@ -103,7 +104,7 @@ export class ClassService {
    * Only ADMIN can delete classes
    */
   private canDelete(context: ServiceContext): boolean {
-    return context.role === "ADMIN";
+    return isSchoolLeader(context.role);
   }
 
   // ==================== VALIDATION ====================

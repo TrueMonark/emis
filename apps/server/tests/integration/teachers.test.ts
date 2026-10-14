@@ -107,7 +107,7 @@ describe("teachers routes", () => {
     expect(status).toBe(400);
   });
 
-  it("only ADMIN can hard-delete a teacher", async () => {
+  it("only school leaders can hard-delete a teacher", async () => {
     const created = await callRoute<{ data: { id: string } }>(createTeacher, {
       method: "POST",
       url: "/api/teachers",
@@ -119,7 +119,7 @@ describe("teachers routes", () => {
     const deniedDelete = await callRoute(deleteTeacher, {
       method: "DELETE",
       url: `/api/teachers/${teacherId}`,
-      token: headTeacherToken,
+      token: teacherToken,
       params: { id: teacherId },
     });
     expect(deniedDelete.status).toBe(403);
@@ -145,7 +145,7 @@ describe("teachers routes", () => {
     expect(Array.isArray(json.data)).toBe(true);
   });
 
-  it("resets a teacher's password to the default (ADMIN/HEAD_TEACHER only), and the new password logs in", async () => {
+  it("resets a teacher's password to a new one-time password (head/deputy/admin only), which then logs in", async () => {
     const teacher = await createTestUser({ role: Role.TEACHER, email: "reset-target@example.com" });
 
     const denied = await callRoute(resetPassword, {
@@ -156,16 +156,18 @@ describe("teachers routes", () => {
     });
     expect(denied.status).toBe(403);
 
-    const { status } = await callRoute(resetPassword, {
+    const { status, json } = await callRoute<{ data: { temporaryPassword: string } }>(resetPassword, {
       method: "POST",
       url: `/api/teachers/${teacher.teacherProfile!.id}/reset-password`,
       token: adminToken,
       params: { id: teacher.teacherProfile!.id },
     });
     expect(status).toBe(200);
+    expect(json.data.temporaryPassword).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
 
-    const relogin = await loginAs("reset-target@example.com", "teacher123");
+    const relogin = await loginAs("reset-target@example.com", json.data.temporaryPassword);
     expect(relogin).toBeTruthy();
+    await expect(loginAs("reset-target@example.com", teacher.password)).rejects.toThrow();
   });
 
   it("accepts up to 2 permissible subjects in the primary subject's department, tagging PRIMARY/SECONDARY/PERMISSIBLE roles", async () => {

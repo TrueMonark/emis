@@ -8,6 +8,7 @@ import { settingsService } from "@/features/settings/settings.service";
 import { clearSchoolInfoCache } from "@/lib/settings/school-info-helper";
 import { Role } from "@school/shared/types/prisma-enums";
 import { AuthContext } from "@/lib/auth/authorization";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 // The logo only ever needs to render small (a ~52pt slot in generated PDFs,
 // a similarly small UI thumbnail), but it gets base64-embedded in every
@@ -26,7 +27,7 @@ const UPLOAD_MAX_SIZE = 5 * 1024 * 1024;
  */
 export const POST = withAuth(async (request: Request, user) => {
   try {
-    if (user.role !== "ADMIN") {
+    if (!isSchoolLeader(user.role)) {
       throw new ForbiddenError("Only admins can upload school logo");
     }
     const context: AuthContext = { userId: user.userId, role: user.role as Role };
@@ -66,16 +67,17 @@ export const POST = withAuth(async (request: Request, user) => {
       throw new BadRequestError("Could not process this file as an image.");
     }
 
-    const filename = "school-logo.png";
+    // One file per school, so schools never overwrite each other's logo.
+    const filename = `school-logo-${user.schoolId}.png`;
     const publicPath = await uploadFilePath(filename);
 
-    // Clean up any logo saved under the old scheme (which kept the uploaded
-    // extension) so a stale multi-MB file doesn't linger in the uploads folder.
-    const oldExtensions = ["png", "jpg", "jpeg", "svg"];
-    for (const ext of oldExtensions) {
+    // Remove this school's previous logo file if it had a different name (e.g. the
+    // single-school "school-logo.png"). Never touch other schools' files.
+    const previous = await settingsService.getSetting("logoFilename", context);
+    const previousFilename = typeof previous?.value === "string" ? previous.value : "";
+    if (previousFilename && previousFilename !== filename) {
       try {
-        const oldPath = await uploadFilePath(`school-logo.${ext}`);
-        await unlink(oldPath);
+        await unlink(await uploadFilePath(previousFilename));
       } catch {
         // Ignore if file doesn't exist
       }
@@ -105,23 +107,24 @@ export const POST = withAuth(async (request: Request, user) => {
  */
 export const DELETE = withAuth(async (request: Request, user) => {
   try {
-    if (user.role !== "ADMIN") {
+    if (!isSchoolLeader(user.role)) {
       throw new ForbiddenError("Only admins can delete school logo");
     }
     const context: AuthContext = { userId: user.userId, role: user.role as Role };
 
     const setting = await settingsService.getSetting("logoFilename", context);
-    const currentFilename = (setting?.value as string) || "school-logo.png";
+    const currentFilename = (setting?.value as string) || "";
 
-    try {
-      const logoPath = await uploadFilePath(currentFilename);
-      await unlink(logoPath);
-    } catch {
-      // Ignore if file doesn't exist
+    if (currentFilename) {
+      try {
+        await unlink(await uploadFilePath(currentFilename));
+      } catch {
+        // Ignore if file doesn't exist
+      }
     }
 
     await settingsService.setSetting(
-      { key: "logoFilename", value: "school-logo.png", category: "school_info" },
+      { key: "logoFilename", value: "", category: "school_info" },
       context
     );
 

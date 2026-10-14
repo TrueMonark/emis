@@ -60,7 +60,8 @@ export class AcademicYearRepository {
    * Find academic year by year number
    */
   async findByYear(year: number): Promise<AcademicYear | null> {
-    return prisma.academicYear.findUnique({
+    // Unique per school; row-level security limits this to the current school.
+    return prisma.academicYear.findFirst({
       where: { year },
     });
   }

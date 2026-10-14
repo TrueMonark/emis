@@ -7,6 +7,7 @@ import { subjectTeacherAssignmentRepository } from "@/features/subject-teacher-a
 import prisma from "@/lib/db/prisma";
 import { isHOD } from "@/lib/auth/position-helpers";
 import { NotFoundError as HttpNotFoundError } from "@/lib/http/errors";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * SecondaryTimetable Service - SECONDARY SCHOOL (Grades 8-12)
@@ -70,7 +71,7 @@ export class SecondaryTimetableService {
    * TEACHER can manage if they are HOD (position-based check)
    */
   private async canManageTimetable(context: ServiceContext): Promise<boolean> {
-    if (["ADMIN", "HEAD_TEACHER", "DEPUTY_HEAD"].includes(context.role)) {
+    if (isSchoolLeader(context.role)) {
       return true;
     }
 

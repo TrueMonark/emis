@@ -1,4 +1,5 @@
 import prisma from "@/lib/db/prisma";
+import { requireSchoolId } from "@/lib/db/tenant";
 import { Prisma } from "@prisma/client";
 import { SystemSettings } from "@school/shared/types/prisma-enums";
 
@@ -14,7 +15,7 @@ export class SystemSettingsRepository {
    */
   async findByKey(key: string): Promise<SystemSettings | null> {
     return prisma.systemSettings.findUnique({
-      where: { key },
+      where: { schoolId_key: { schoolId: requireSchoolId(), key } },
     });
   }
 
@@ -46,7 +47,7 @@ export class SystemSettingsRepository {
     category: string
   ): Promise<SystemSettings> {
     return prisma.systemSettings.upsert({
-      where: { key },
+      where: { schoolId_key: { schoolId: requireSchoolId(), key } },
       create: {
         key,
         value,
@@ -68,7 +69,7 @@ export class SystemSettingsRepository {
     await prisma.$transaction(
       settings.map((setting) =>
         prisma.systemSettings.upsert({
-          where: { key: setting.key },
+          where: { schoolId_key: { schoolId: requireSchoolId(), key: setting.key } },
           create: {
             key: setting.key,
             value: setting.value,
@@ -92,7 +93,7 @@ export class SystemSettingsRepository {
   ): Promise<SystemSettings> {
     try {
       return await prisma.systemSettings.update({
-        where: { key },
+        where: { schoolId_key: { schoolId: requireSchoolId(), key } },
         data,
       });
     } catch (error) {
@@ -111,7 +112,7 @@ export class SystemSettingsRepository {
   async delete(key: string): Promise<SystemSettings> {
     try {
       return await prisma.systemSettings.delete({
-        where: { key },
+        where: { schoolId_key: { schoolId: requireSchoolId(), key } },
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {

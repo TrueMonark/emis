@@ -146,13 +146,9 @@ export class ClassRepository {
     gradeId: string,
     name: string
   ): Promise<Class | null> {
-    return await prisma.class.findUnique({
-      where: {
-        gradeId_name: {
-          gradeId,
-          name,
-        },
-      },
+    // Unique per school; row-level security limits this to the current school.
+    return await prisma.class.findFirst({
+      where: { gradeId, name },
       include: {
         grade: true,
       },

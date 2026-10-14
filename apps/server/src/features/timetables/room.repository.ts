@@ -83,7 +83,7 @@ export class RoomRepository {
    * Find room by name
    */
   async findByName(name: string): Promise<Room | null> {
-    return prisma.room.findUnique({
+    return prisma.room.findFirst({
       where: { name },
     });
   }
@@ -92,7 +92,7 @@ export class RoomRepository {
    * Find room by code
    */
   async findByCode(code: string): Promise<Room | null> {
-    return prisma.room.findUnique({
+    return prisma.room.findFirst({
       where: { code },
     });
   }

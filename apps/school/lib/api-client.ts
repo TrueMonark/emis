@@ -10,6 +10,8 @@
  * Automatically includes JWT token from localStorage.
  */
 
+import { PASSWORD_CHANGE_REQUIRED_HEADER } from "@school/shared/auth/password-change";
+
 /**
  * Get auth token from localStorage
  */
@@ -33,7 +35,19 @@ export function authFetch(input: string, init: RequestInit = {}): Promise<Respon
   if (token && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
   }
-  return fetch(input, { ...init, headers });
+  return fetch(input, { ...init, headers }).then((response) => {
+    // The server refuses everything until a one-time password is changed; send the person
+    // to the page where they can do that.
+    if (
+      response.status === 403 &&
+      response.headers.get(PASSWORD_CHANGE_REQUIRED_HEADER) === "true" &&
+      typeof window !== "undefined" &&
+      window.location.pathname !== "/change-password"
+    ) {
+      window.location.href = "/change-password";
+    }
+    return response;
+  });
 }
 
 /**

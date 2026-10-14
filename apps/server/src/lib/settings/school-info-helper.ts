@@ -3,6 +3,8 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import { uploadsDir } from "@/lib/files/uploads";
 import { SCHOOL_NAME_NOT_SET } from "@school/shared/format";
+import { requireSchoolId } from "@/lib/db/tenant";
+import { logger } from "@/lib/logger/logger";
 
 /**
  * School Info Helper
@@ -27,15 +29,11 @@ export interface SchoolInfo {
   logoFilename: string;
 }
 
-// Simple in-memory cache
-let cachedSchoolInfo: SchoolInfo | null = null;
-let cacheTimestamp: number = 0;
+// In-memory caches, one entry per school (never share one school's details with another).
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-// Separate cache for the logo base64 — reading + encoding the file on every
-// PDF request is wasteful; the logo rarely changes.
-let cachedLogoBase64: string | null | undefined = undefined; // undefined = not yet loaded
-let logoFilenameAtCache = ""; // invalidate if the logo filename changes
+const infoCache = new Map<string, { info: SchoolInfo; at: number }>();
+// Reading + encoding the logo on every PDF request is wasteful; the logo rarely changes.
+const logoCache = new Map<string, { filename: string; base64: string | null }>();
 
 /**
  * Get school information from settings
@@ -43,10 +41,12 @@ let logoFilenameAtCache = ""; // invalidate if the logo filename changes
  */
 export async function getSchoolInfo(): Promise<SchoolInfo> {
   const now = Date.now();
+  const schoolId = requireSchoolId();
 
   // Return cached data if still valid
-  if (cachedSchoolInfo && now - cacheTimestamp < CACHE_TTL) {
-    return cachedSchoolInfo;
+  const cached = infoCache.get(schoolId);
+  if (cached && now - cached.at < CACHE_TTL) {
+    return cached.info;
   }
 
   // Fetch from database using admin context (settings are public info)
@@ -66,7 +66,7 @@ export async function getSchoolInfo(): Promise<SchoolInfo> {
   const merged = { ...defaults, ...settingsObject };
 
   // Build school info object
-  cachedSchoolInfo = {
+  const info: SchoolInfo = {
     name: merged.name || SCHOOL_NAME_NOT_SET,
     motto: merged.motto || "",
     address: merged.address || "",
@@ -81,11 +81,11 @@ export async function getSchoolInfo(): Promise<SchoolInfo> {
     studentCapacity: merged.studentCapacity || "",
     schoolType: merged.schoolType || "Secondary",
     registrationNumber: merged.registrationNumber || "",
-    logoFilename: merged.logoFilename || "school-logo.png",
+    logoFilename: merged.logoFilename || "",
   };
 
-  cacheTimestamp = now;
-  return cachedSchoolInfo;
+  infoCache.set(schoolId, { info, at: now });
+  return info;
 }
 
 /**
@@ -104,10 +104,13 @@ export async function getSchoolLogoUrl(): Promise<string> {
 export async function getSchoolLogoBase64(): Promise<string | null> {
   try {
     const info = await getSchoolInfo();
+    const schoolId = requireSchoolId();
+    if (!info.logoFilename) return null;
 
     // Return cached value if the logo filename hasn't changed
-    if (cachedLogoBase64 !== undefined && logoFilenameAtCache === info.logoFilename) {
-      return cachedLogoBase64;
+    const cached = logoCache.get(schoolId);
+    if (cached && cached.filename === info.logoFilename) {
+      return cached.base64;
     }
 
     const logoPath = join(uploadsDir(), info.logoFilename);
@@ -118,13 +121,16 @@ export async function getSchoolLogoBase64(): Promise<string | null> {
     if (ext === "jpg" || ext === "jpeg") mimeType = "image/jpeg";
     else if (ext === "svg") mimeType = "image/svg+xml";
 
-    const base64 = logoBuffer.toString("base64");
-    cachedLogoBase64 = `data:${mimeType};base64,${base64}`;
-    logoFilenameAtCache = info.logoFilename;
-    return cachedLogoBase64;
+    const base64 = `data:${mimeType};base64,${logoBuffer.toString("base64")}`;
+    logoCache.set(schoolId, { filename: info.logoFilename, base64 });
+    return base64;
   } catch (error) {
-    console.error("Error loading school logo:", error);
-    cachedLogoBase64 = null; // Cache the null so we don't retry on every request
+    logger.warn("School logo could not be loaded", {
+      reason: error instanceof Error ? error.message : String(error),
+    });
+    // Cache the null so we don't retry on every request
+    const info = await getSchoolInfo().catch(() => null);
+    if (info) logoCache.set(requireSchoolId(), { filename: info.logoFilename, base64: null });
     return null;
   }
 }
@@ -133,8 +139,7 @@ export async function getSchoolLogoBase64(): Promise<string | null> {
  * Clear the cache (call this after updating school settings)
  */
 export function clearSchoolInfoCache(): void {
-  cachedSchoolInfo = null;
-  cacheTimestamp = 0;
-  cachedLogoBase64 = undefined;
-  logoFilenameAtCache = "";
+  const schoolId = requireSchoolId();
+  infoCache.delete(schoolId);
+  logoCache.delete(schoolId);
 }

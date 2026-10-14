@@ -7,6 +7,7 @@
 import { Role } from '@school/shared/types/prisma-enums';
 import { hasRoleAuthority, roleHasPermission } from '@school/shared/auth/role-hierarchy';
 import { UnauthorizedError } from '@/lib/errors';
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 export interface AuthContext {
   userId: string;
@@ -80,7 +81,7 @@ export function requirePermission(
  * Check if user is admin
  */
 export function isAdmin(context: AuthContext): boolean {
-  return context.role === Role.ADMIN;
+  return isSchoolLeader(context.role);
 }
 
 /**

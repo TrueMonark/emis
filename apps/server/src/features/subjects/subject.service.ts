@@ -7,6 +7,7 @@ import {
   NotFoundError,
   ValidationError,
 } from "@/lib/errors";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 /**
  * Subject Service - Business Logic Layer
@@ -55,7 +56,7 @@ export class SubjectService {
    * Only ADMIN and HEAD_TEACHER can create subjects
    */
   private canCreate(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**
@@ -63,7 +64,7 @@ export class SubjectService {
    * Only ADMIN and HEAD_TEACHER can update subjects
    */
   private canUpdate(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER"].includes(context.role);
+    return isSchoolLeader(context.role);
   }
 
   /**
@@ -71,7 +72,7 @@ export class SubjectService {
    * Only ADMIN can delete subjects
    */
   private canDelete(context: ServiceContext): boolean {
-    return context.role === "ADMIN";
+    return isSchoolLeader(context.role);
   }
 
   // ==================== VALIDATION ====================

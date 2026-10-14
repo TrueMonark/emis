@@ -1,4 +1,5 @@
 import prisma from "@/lib/db/prisma";
+import { requireSchoolId } from "@/lib/db/tenant";
 import { Prisma } from "@prisma/client";
 import { UserPermission, Permission } from "@school/shared/types/prisma-enums";
 
@@ -136,7 +137,8 @@ export class UserPermissionRepository {
   ): Promise<UserPermission | null> {
     return prisma.userPermission.findUnique({
       where: {
-        userId_permission: {
+        schoolId_userId_permission: {
+          schoolId: requireSchoolId(),
           userId,
           permission,
         },
@@ -250,7 +252,8 @@ export class UserPermissionRepository {
     try {
       return await prisma.userPermission.delete({
         where: {
-          userId_permission: {
+          schoolId_userId_permission: {
+            schoolId: requireSchoolId(),
             userId,
             permission,
           },

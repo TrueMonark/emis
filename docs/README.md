@@ -23,8 +23,9 @@ still hold; trust `CLAUDE.md` for paths.
 | [EDGE_CASES.md](domain/EDGE_CASES.md) | Known edge cases to keep handling |
 | **timetable/** | Timetable generation: spec, solver settings, double-period patterns, how-to |
 | **integrations/** | [SMS_INTEGRATION.md](integrations/SMS_INTEGRATION.md) — SMS providers |
-| **phases/** | What each restructuring phase changed and how to test it; [applying-phases-1-2.md](phases/applying-phases-1-2.md) — how to apply them to a fresh clone |
+| **phases/** | What each restructuring phase changed and how to test it; [applying-phases-1-2.md](phases/applying-phases-1-2.md) — setting up on Windows and pushing to your own GitHub; [one-time-passwords-checklist.md](phases/one-time-passwords-checklist.md) — random one-time passwords and the forced password change; [branding-checklist.md](phases/branding-checklist.md) — school name and Monark Devs branding; [phase-3a-checklist.md](phases/phase-3a-checklist.md) — many schools in one database |
 | **research/** | [reporting-research-2026-10.md](research/reporting-research-2026-10.md) — what is known about school → DEBS → PEO → HQ reporting, including the five Ministry documents (sources, forms, design impact, open questions); the two handover briefs |
+| **design/** | [phase-3-foundation.md](design/phase-3-foundation.md) — draft design for many schools, year levels, learner numbers and offline-ready data |
 | [backlog.md](backlog.md) | Improvement ideas collected from old TODO cards |
 
 ## archive/

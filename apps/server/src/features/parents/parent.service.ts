@@ -3,6 +3,7 @@ import { Guardian, ParentStatus, ParentRelationship } from "@school/shared/types
 import { parentRepository } from "./parent.repository";
 import { studentRepository } from "@/features/students/student.repository";
 import { UnauthorizedError, NotFoundError, ValidationError } from "@/lib/errors";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
 export interface LinkStudentInput {
   studentId: string;
@@ -63,7 +64,7 @@ export class ParentService {
    * Only ADMIN, HEAD_TEACHER, and CLERK can create guardians
    */
   private canCreate(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER", "CLERK"].includes(context.role);
+    return (isSchoolLeader(context.role) || context.role === "CLERK");
   }
 
   /**
@@ -71,7 +72,7 @@ export class ParentService {
    * Only ADMIN, HEAD_TEACHER, and CLERK can update guardians
    */
   private canUpdate(context: ServiceContext): boolean {
-    return ["ADMIN", "HEAD_TEACHER", "CLERK"].includes(context.role);
+    return (isSchoolLeader(context.role) || context.role === "CLERK");
   }
 
   /**
@@ -79,7 +80,7 @@ export class ParentService {
    * Only ADMIN can delete guardians
    */
   private canDelete(context: ServiceContext): boolean {
-    return context.role === "ADMIN";
+    return isSchoolLeader(context.role);
   }
 
   /**

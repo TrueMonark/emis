@@ -1,4 +1,6 @@
 import prisma from "@/lib/db/prisma";
+import { requireSchoolId } from "@/lib/db/tenant";
+import { schoolMembershipRepository } from "@/features/schools/schoolMembership.repository";
 import { Prisma } from "@prisma/client";
 import { User, Role } from "@school/shared/types/prisma-enums";
 
@@ -14,6 +16,11 @@ const withProfileAndPermissions = {
   },
 } satisfies Prisma.UserInclude;
 
+/** Users are a national table: always limit lists and lookups to members of the current school. */
+const inCurrentSchool = (): Prisma.UserWhereInput => ({
+  schoolMemberships: { some: { schoolId: requireSchoolId(), status: { not: "ENDED" } } },
+});
+
 /**
  * User Repository (permissions-management slice) - Data Access Layer
  *
@@ -26,7 +33,7 @@ export class UserRepository {
     pagination: { skip: number; take: number }
   ) {
     return prisma.user.findMany({
-      where,
+      where: { AND: [where, inCurrentSchool()] },
       skip: pagination.skip,
       take: pagination.take,
       orderBy: { email: "asc" },
@@ -35,25 +42,34 @@ export class UserRepository {
   }
 
   async count(where: Prisma.UserWhereInput): Promise<number> {
-    return prisma.user.count({ where });
+    return prisma.user.count({ where: { AND: [where, inCurrentSchool()] } });
   }
 
   async findById(id: string): Promise<User | null> {
-    return prisma.user.findUnique({ where: { id } });
+    return prisma.user.findFirst({ where: { id, ...inCurrentSchool() } });
   }
 
+  /** Change the person's role at the current school (membership + mirrored User.role). */
   async updateRole(id: string, role: Role) {
-    return prisma.user.update({
+    await schoolMembershipRepository.updateRole(id, requireSchoolId(), role);
+    return prisma.user.findUniqueOrThrow({
       where: { id },
-      data: { role },
       include: {
         profile: { select: { id: true, firstName: true, lastName: true, staffNumber: true } },
       },
     });
   }
 
+  /** Active heads/deputies/admins at the current school (so the school can't lock itself out). */
   async countActiveAdmins(): Promise<number> {
-    return prisma.user.count({ where: { role: "ADMIN", isActive: true } });
+    return prisma.schoolMembership.count({
+      where: {
+        schoolId: requireSchoolId(),
+        status: "ACTIVE",
+        role: { in: ["ADMIN", "HEAD_TEACHER", "DEPUTY_HEAD"] },
+        user: { isActive: true },
+      },
+    });
   }
 
   async findTeacherProfileId(userId: string): Promise<string | null> {
@@ -70,7 +86,7 @@ export class UserRepository {
    */
   async findActiveWithProfileNames(role?: Role) {
     return prisma.user.findMany({
-      where: { isActive: true, ...(role && { role }) },
+      where: { isActive: true, ...(role && { role }), ...inCurrentSchool() },
       select: {
         id: true,
         email: true,
