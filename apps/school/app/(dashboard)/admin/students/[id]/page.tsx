@@ -72,6 +72,8 @@ interface Student {
   middleName: string | null;
   lastName: string;
   studentNumber: string;
+  /** System-wide learner number (ZM26-…) */
+  learnerNumber?: string;
   gender: string;
   dateOfBirth: string;
   admissionDate: string;
@@ -393,6 +395,11 @@ export default function StudentProfilePage() {
                 </div>
                 <p className="text-muted-foreground font-mono text-sm">
                   {student.studentNumber}
+                  {student.learnerNumber && (
+                    <span className="ml-3" title="Learner number — follows the learner to any school">
+                      {student.learnerNumber}
+                    </span>
+                  )}
                 </p>
               </div>
               {currentEnrollment && (

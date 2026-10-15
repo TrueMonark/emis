@@ -83,6 +83,8 @@ export class TeacherReportService {
           select: {
             name: true,
             level: true,
+            stage: true,
+            exam: true,
           },
         },
       },
@@ -160,7 +162,8 @@ export class TeacherReportService {
       classInfo.grade.level,
       classInfo.grade.name,
       classInfo.name,
-      subjectId
+      subjectId,
+      classInfo.grade.stage
     );
 
     logger.info("Report cards fetched successfully", {
@@ -288,7 +291,9 @@ export class TeacherReportService {
         classTeacherRemarks: report.classTeacherRemarks,
         headTeacherRemarks: report.headTeacherRemarks,
         promotionStatus: report.promotionStatus,
-        nextGrade: report.nextGrade,
+        nextGrade:
+          report.nextGradeName ??
+          (report.nextGrade ? report.nextGrade.replace("GRADE_", "Grade ") : null),
         subjects,
       };
     });
@@ -307,13 +312,14 @@ export class TeacherReportService {
    */
   private calculateStatistics(
     reportCards: any[],
-    gradeLevel: string,
+    gradeLevel: string | null,
     gradeName: string,
     className: string,
-    subjectId?: string
+    subjectId?: string,
+    stage?: string | null
   ): ReportStatistics {
     const totalStudents = reportCards.length;
-    const eczLevel = resolveECZLevel(gradeLevel as PrismaGradeLevel, gradeName, className);
+    const eczLevel = resolveECZLevel(gradeLevel as PrismaGradeLevel | null, gradeName, className, stage);
     const isJunior = eczLevel === "JUNIOR";
 
     if (totalStudents === 0) {

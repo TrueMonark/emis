@@ -99,7 +99,7 @@ export const teacherPerformanceService = {
     const enrollment = await prisma.studentClassEnrollment.findFirst({
       where: { studentId, status: "ACTIVE" },
       select: {
-        class: { select: { name: true, grade: { select: { level: true, name: true } } } },
+        class: { select: { name: true, grade: { select: { level: true, name: true, stage: true } } } },
       },
     });
 
@@ -108,7 +108,8 @@ export const teacherPerformanceService = {
       ? resolveECZLevel(
           enrollment.class.grade.level as Parameters<typeof resolveECZLevel>[0],
           enrollment.class.grade.name,
-          enrollment.class.name
+          enrollment.class.name,
+          enrollment.class.grade.stage
         )
       : "SENIOR";
 

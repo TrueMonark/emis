@@ -22,6 +22,7 @@ import { summarizeAttendance } from "@/features/attendance/attendance-summary";
 import { ValidationError, NotFoundError, UnauthorizedError } from "@/lib/errors";
 import { requireMinimumRole, AuthContext } from "@/lib/auth/authorization";
 import { calculateECZGrade, resolveECZLevel } from "@school/shared/grading/ecz-grading-system";
+import { mergesPhysicsAndChemistry } from "@school/shared/curriculum/year-levels";
 import {
   isPhysicsSubjectName,
   isChemistrySubjectName,
@@ -46,7 +47,10 @@ export interface UpdateReportCardInput {
   classTeacherRemarks?: string;
   headTeacherRemarks?: string;
   promotionStatus?: PromotionStatus;
+  /** Old grade number; kept for older screens. Prefer nextGradeName. */
   nextGrade?: GradeLevel;
+  /** Name of the year level the learner moves to ("Form 2"), or null to clear */
+  nextGradeName?: string | null;
 }
 
 export interface ReportCardFilters {
@@ -250,7 +254,12 @@ export class ReportCardService {
 
       // Calculate grade using correct grading scale — grade name takes precedence
       // so Form classes always use the 9-point Senior scale even if their enum is GRADE_8/9
-      const gradeLevel = resolveECZLevel(classEntity.grade.level, classEntity.grade.name, classEntity.name);
+      const gradeLevel = resolveECZLevel(
+        classEntity.grade.level,
+        classEntity.grade.name,
+        classEntity.name,
+        classEntity.grade.stage
+      );
       const grade = calculateECZGrade(totalMark, gradeLevel);
 
       subjectMarks.set(subjectId, {
@@ -474,8 +483,10 @@ export class ReportCardService {
     // narrow `class`/`subjects`' inferred shape to what the actual queries
     // include (grade, subject) — these casts reflect what the callers'
     // queries really fetch.
-    const classData = reportCard.class as { grade?: { level?: string | null } | null } | null;
-    if (classData?.grade?.level !== "GRADE_12") return reportCard;
+    const classData = reportCard.class as {
+      grade?: { level?: string | null; exam?: string | null } | null;
+    } | null;
+    if (!classData?.grade || !mergesPhysicsAndChemistry(classData.grade)) return reportCard;
 
     const subjects = reportCard.subjects as SubjectMarkRow[];
     const physics = subjects.find((s) => isPhysicsSubjectName(s.subject.name));

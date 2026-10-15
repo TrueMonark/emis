@@ -13,7 +13,11 @@ import {
   TermType,
   DayOfWeek,
   ECZGrade,
+  YearStage,
+  Curriculum,
+  NationalExam,
 } from "@prisma/client";
+import { schoolLevelForStage, stageFromLegacyLevel } from "@school/shared/curriculum/year-levels";
 
 /** The school every test works in unless it says otherwise (see resetDb). */
 export const TEST_SCHOOL_ID = "school-test-a";
@@ -22,8 +26,8 @@ const UNASSIGNED_DISTRICT_ID = "office-district-unassigned";
 
 /**
  * Truncates every app table (discovered dynamically, so this doesn't drift as the schema grows)
- * except Prisma's own migration-tracking table and the national office list the migration
- * created, then creates the test school and makes it the database context for code that runs
+ * except Prisma's own migration-tracking table and the national lists the migrations created
+ * (education offices, subject catalogue, pathways), then creates the test school and makes it the database context for code that runs
  * outside a request (fixtures, direct service calls). Call in `beforeEach` — repositories share
  * the module-level `prisma` singleton rather than accepting an injectable per-test client, so
  * transaction rollback isolation isn't available; this is the pragmatic alternative.
@@ -36,7 +40,8 @@ export async function resetDb(): Promise<void> {
   // deserialize Postgres's internal `name` column type against PG 18.
   const tables = await systemPrisma.$queryRaw<{ tablename: string }[]>`
     SELECT tablename::text FROM pg_tables
-    WHERE schemaname = 'public' AND tablename NOT IN ('_prisma_migrations', 'education_offices')
+    WHERE schemaname = 'public'
+      AND tablename NOT IN ('_prisma_migrations', 'education_offices', 'catalogue_subjects', 'pathways')
   `;
 
   if (tables.length > 0) {
@@ -165,27 +170,39 @@ export async function createTestTerm(
   });
 }
 
-const PRIMARY_GRADE_LEVELS: GradeLevel[] = [
-  GradeLevel.GRADE_1,
-  GradeLevel.GRADE_2,
-  GradeLevel.GRADE_3,
-  GradeLevel.GRADE_4,
-  GradeLevel.GRADE_5,
-  GradeLevel.GRADE_6,
-  GradeLevel.GRADE_7,
-];
 
-export async function createTestGrade(overrides: Partial<{ level: GradeLevel; sequence: number }> = {}) {
-  const level = overrides.level ?? GradeLevel.GRADE_8;
-  // Derived from level, not hardcoded — a caller passing a primary GradeLevel
-  // must get a genuinely PRIMARY grade, or any test asserting
-  // primary/secondary filtering would silently pass against a mislabeled fixture.
-  const schoolLevel = PRIMARY_GRADE_LEVELS.includes(level) ? SchoolLevel.PRIMARY : SchoolLevel.SECONDARY;
+export async function createTestGrade(
+  overrides: Partial<{
+    level: GradeLevel | null;
+    sequence: number;
+    name: string;
+    stage: YearStage;
+    curriculum: Curriculum;
+    exam: NationalExam;
+  }> = {}
+) {
+  const level = overrides.level === undefined ? GradeLevel.GRADE_8 : overrides.level;
+  const name = overrides.name ?? (level ? level.replace("GRADE_", "Grade ") : "Form 1");
+  // Stage and exam follow the old grade number unless given, so a fixture for "Grade 12" really
+  // is a School Certificate level and "Grade 3" really is primary.
+  const stage = (overrides.stage ?? stageFromLegacyLevel(level, name) ?? "O_LEVEL") as YearStage;
+  const exam =
+    overrides.exam ??
+    (level === GradeLevel.GRADE_7
+      ? NationalExam.PSLE_LEGACY
+      : level === GradeLevel.GRADE_9
+        ? NationalExam.JSSL
+        : level === GradeLevel.GRADE_12
+          ? NationalExam.SC_O_LEGACY
+          : NationalExam.NONE);
   return prisma.grade.create({
     data: {
       level,
-      name: level.replace("GRADE_", "Grade "),
-      schoolLevel,
+      name,
+      stage,
+      curriculum: overrides.curriculum ?? (level ? Curriculum.LEGACY_2013 : Curriculum.CBC_2023),
+      exam,
+      schoolLevel: schoolLevelForStage(stage) as SchoolLevel,
       sequence: overrides.sequence ?? 8,
     },
   });

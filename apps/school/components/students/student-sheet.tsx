@@ -157,6 +157,11 @@ export function StudentSheet({
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {student.studentNumber}
+                    {(student as { learnerNumber?: string }).learnerNumber && (
+                      <span className="ml-2 font-mono">
+                        {(student as { learnerNumber?: string }).learnerNumber}
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -181,7 +186,7 @@ export function StudentSheet({
             </SheetHeader>
 
             {/* Scrollable Content */}
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 min-h-0">
               <div className="p-6 space-y-4">
                 {/* About - Collapsible */}
                 <Collapsible
@@ -199,10 +204,18 @@ export function StudentSheet({
                       <div className="grid grid-cols-2 gap-x-4 gap-y-4 pt-2">
                         <div>
                           <label className="text-xs text-muted-foreground">
-                            Student Number
+                            Admission Number
                           </label>
                           <p className="text-sm font-medium mt-0.5">
                             {student.studentNumber}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">
+                            Learner Number
+                          </label>
+                          <p className="text-sm font-medium font-mono mt-0.5" title="System-wide; follows the learner to any school">
+                            {(student as { learnerNumber?: string }).learnerNumber ?? "—"}
                           </p>
                         </div>
                         <div>

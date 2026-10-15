@@ -305,6 +305,9 @@ export default function HodAssignmentsPage() {
           ];
           const mappedClasses: AssignmentClass[] = classesData
             .filter((c: any) => {
+              // Phase 3b: year levels say whether they're secondary (Forms included).
+              const schoolLevel = c.grade?.schoolLevel || c.gradeLevel?.schoolLevel;
+              if (schoolLevel) return schoolLevel === "SECONDARY";
               const gradeLevel = c.grade?.level || c.gradeLevel?.level || "";
               const gradeName = c.grade?.name || c.gradeLevel?.name || "";
               return secondaryGrades.some(

@@ -805,7 +805,12 @@ export class AssessmentService {
       }
 
       const { resolveECZLevel } = await import("@school/shared/grading/ecz-grading-system");
-      const gradeLevel = resolveECZLevel(classWithGrade.grade.level, classWithGrade.grade.name, classWithGrade.name);
+      const gradeLevel = resolveECZLevel(
+        classWithGrade.grade.level,
+        classWithGrade.grade.name,
+        classWithGrade.name,
+        classWithGrade.grade.stage
+      );
       gradeToStore = calculateECZGrade(percentage, gradeLevel);
     }
 
@@ -902,7 +907,8 @@ export class AssessmentService {
     const gradeLevel = resolveECZLevel(
       classWithGrade.grade.level,
       classWithGrade.grade.name,
-      classWithGrade.name
+      classWithGrade.name,
+      classWithGrade.grade.stage
     );
 
     // ── 3. Fetch ALL existing results for this assessment in ONE query ─────

@@ -46,7 +46,12 @@ interface ReportCardData {
 
 interface ClassReportsTableProps {
   reportCards: ReportCardData[];
+  /** Open one learner's report card (row click). */
+  onOpen?: (reportCardId: string) => void;
 }
+
+/** Promotion is decided at the end of the year; before that there's nothing to show. */
+const PROMOTION_NOT_DECIDED_TITLE = "Promotion is decided at the end of the school year";
 
 // Helper function to get ECZ grade label
 const getGradeLabel = (grade: string | null): string => {
@@ -103,7 +108,7 @@ const getStudentInitials = (firstName: string, lastName: string): string => {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 };
 
-export function ClassReportsTable({ reportCards }: ClassReportsTableProps) {
+export function ClassReportsTable({ reportCards, onOpen }: ClassReportsTableProps) {
   // Sort report cards by position (if available)
   const sortedReportCards = [...reportCards].sort((a, b) => {
     if (a.position === null) return 1;
@@ -136,7 +141,10 @@ export function ClassReportsTable({ reportCards }: ClassReportsTableProps) {
               : "text-red-600";
 
           return (
-            <div key={report.id} className="flex items-center gap-3 px-4 py-3">
+            <div
+              key={report.id}
+              className={`flex items-center gap-3 px-4 py-3 ${onOpen ? "cursor-pointer active:bg-muted/50" : ""}`}
+              onClick={onOpen ? () => onOpen(report.id) : undefined}>
               {/* Rank number */}
               <div className="w-5 shrink-0 text-center">
                 <span className="text-xs font-semibold text-muted-foreground tabular-nums">
@@ -174,14 +182,14 @@ export function ClassReportsTable({ reportCards }: ClassReportsTableProps) {
                     ? `${report.averageMark.toFixed(1)}%`
                     : "—"}
                 </span>
-                <Badge
-                  variant={getPromotionVariant(report.promotionStatus)}
-                  className="text-[10px] px-1.5 py-0 h-4">
-                  {report.promotionStatus
-                    ? report.promotionStatus.charAt(0) +
-                      report.promotionStatus.slice(1).toLowerCase()
-                    : "Pending"}
-                </Badge>
+                {report.promotionStatus ? (
+                  <Badge
+                    variant={getPromotionVariant(report.promotionStatus)}
+                    className="text-[10px] px-1.5 py-0 h-4">
+                    {report.promotionStatus.charAt(0) +
+                      report.promotionStatus.slice(1).toLowerCase()}
+                  </Badge>
+                ) : null}
               </div>
             </div>
           );
@@ -198,7 +206,7 @@ export function ClassReportsTable({ reportCards }: ClassReportsTableProps) {
               <TableHead className="text-center">Average</TableHead>
               <TableHead className="text-center">Position</TableHead>
               <TableHead className="text-center">Attendance</TableHead>
-              <TableHead className="text-center">Status</TableHead>
+              <TableHead className="text-center">Promotion</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -241,7 +249,10 @@ export function ClassReportsTable({ reportCards }: ClassReportsTableProps) {
               }
 
               return (
-                <TableRow key={report.id}>
+                <TableRow
+                  key={report.id}
+                  className={onOpen ? "cursor-pointer" : undefined}
+                  onClick={onOpen ? () => onOpen(report.id) : undefined}>
                   <TableCell className="font-medium">{index + 1}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -302,7 +313,9 @@ export function ClassReportsTable({ reportCards }: ClassReportsTableProps) {
                           report.promotionStatus.slice(1).toLowerCase()}
                       </Badge>
                     ) : (
-                      <Badge variant="secondary">Pending</Badge>
+                      <span className="text-muted-foreground" title={PROMOTION_NOT_DECIDED_TITLE}>
+                        —
+                      </span>
                     )}
                   </TableCell>
                 </TableRow>

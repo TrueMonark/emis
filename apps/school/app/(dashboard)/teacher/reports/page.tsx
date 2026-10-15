@@ -3,7 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@school/ui/components/card";
 import { Alert, AlertDescription } from "@school/ui/components/alert";
-import { AlertCircle, FileText, BarChart3 } from "lucide-react";
+import { AlertCircle, FileText, BarChart3, Download, Loader2 } from "lucide-react";
+import { Button } from "@school/ui/components/button";
+import { toast } from "sonner";
+import { ReportCardSheet } from "@/components/report-cards/report-card-sheet";
+import { downloadClassTermReportCardsZip } from "@/lib/report-card-downloads";
 import { Skeleton } from "@school/ui/components/skeleton";
 import { ClassReportsHeader } from "@/components/reports/class-reports-header";
 import { ClassReportsTable } from "@/components/reports/class-reports-table";
@@ -91,6 +95,33 @@ export default function ClassReportsPage() {
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const initializedRef = useRef(false);
+  // Viewing one learner's report card
+  const [openReportCardId, setOpenReportCardId] = useState<string | null>(null);
+  // Class teacher: download the whole class as a ZIP of PDFs
+  const [zipProgress, setZipProgress] = useState<number | null>(null);
+
+  const selectedClassOption = classes.find((c) => c.id === selectedClass);
+  const selectedTermOption = terms.find((t) => t.id === selectedTerm);
+
+  const handleDownloadAll = async () => {
+    if (!selectedClassOption || !selectedTerm) return;
+    try {
+      setZipProgress(0);
+      const count = await downloadClassTermReportCardsZip({
+        classId: selectedClassOption.classId,
+        termId: selectedTerm,
+        className: selectedClassOption.name,
+        gradeName: selectedClassOption.grade,
+        onProgress: setZipProgress,
+      });
+      if (count === 0) toast.error("No report cards to download for this class and term yet.");
+      else toast.success(`Downloaded ${count} report cards`);
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to download the report cards"));
+    } finally {
+      setZipProgress(null);
+    }
+  };
 
   // Fetch teacher's classes and terms on mount
   useEffect(() => {
@@ -328,10 +359,39 @@ export default function ClassReportsPage() {
 
                 {/* Report Cards Table */}
                 <Card className="shadow-none">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      Student Report Cards
-                    </CardTitle>
+                  <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        Student Report Cards
+                      </CardTitle>
+                      {reportCards.length > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Click a learner to view their report card
+                          {selectedTermOption ? ` for ${selectedTermOption.name}` : ""}.
+                        </p>
+                      )}
+                    </div>
+                    {/* The class teacher prints/downloads the whole class at once */}
+                    {selectedClassOption?.isClassTeacher && reportCards.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 gap-1.5"
+                        onClick={handleDownloadAll}
+                        disabled={zipProgress !== null}>
+                        {zipProgress !== null ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {zipProgress}%
+                          </>
+                        ) : (
+                          <>
+                            <Download className="h-4 w-4" />
+                            Download all (ZIP)
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </CardHeader>
                   <CardContent>
                     {dataLoading ? (
@@ -382,7 +442,7 @@ export default function ClassReportsPage() {
                         </p>
                       </div>
                     ) : (
-                      <ClassReportsTable reportCards={reportCards} />
+                      <ClassReportsTable reportCards={reportCards} onOpen={setOpenReportCardId} />
                     )}
                   </CardContent>
                 </Card>
@@ -444,6 +504,14 @@ export default function ClassReportsPage() {
           </TabsContent>
         </Tabs>
       )}
+      {/* One learner's report card: view, download or print */}
+      <ReportCardSheet
+        reportCardId={openReportCardId}
+        open={openReportCardId !== null}
+        onOpenChange={(open) => {
+          if (!open) setOpenReportCardId(null);
+        }}
+      />
     </div>
   );
 }

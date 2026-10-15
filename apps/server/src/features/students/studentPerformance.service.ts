@@ -39,14 +39,14 @@ export const studentPerformanceService = {
 
     const classData = await prisma.class.findUnique({
       where: { id: classId },
-      select: { grade: { select: { level: true } } },
+      select: { name: true, grade: { select: { level: true, stage: true, name: true } } },
     });
 
     if (!classData?.grade) {
       throw new NotFoundError("Class or grade not found");
     }
 
-    const curriculumType = getCurriculumType(classData.grade.level);
+    const curriculumType = getCurriculumType(classData.grade.level, classData.grade.stage, classData.grade.name, classData.name);
 
     const classSubjects = await prisma.classSubject.findMany({
       where: { classId },

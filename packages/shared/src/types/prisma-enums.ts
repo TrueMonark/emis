@@ -19,6 +19,9 @@ export {
   TermType,
   GradeLevel,
   SchoolLevel,
+  YearStage,
+  Curriculum,
+  NationalExam,
 
   // Status Enums
   ClassStatus,
@@ -88,6 +91,9 @@ export type {
   Grade,
   Class,
   GradeSubject,
+  CatalogueSubject,
+  Pathway,
+  SchoolPathway,
 
   // Staff & Departments
   Department,

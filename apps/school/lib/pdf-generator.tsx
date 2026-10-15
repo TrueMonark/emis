@@ -78,7 +78,9 @@ function mapReportCardData(
     totalMark: sub.totalMark ?? null,
     grade: sub.grade ?? null,
   }));
-  const bestOfSix = computeBestOfSixFromReportCard(subjectsForBestSix, gradeLevel, gradeName, className);
+  const bestOfSix = computeBestOfSixFromReportCard(
+    subjectsForBestSix, gradeLevel, gradeName, className, reportCard.class?.grade?.stage ?? null
+  );
   const attendance = formatAttendanceLabel(reportCard);
 
   const subjects =
@@ -112,8 +114,13 @@ function mapReportCardData(
  * shared resolveReportCardLevel so this never disagrees with the server-side
  * PDF route or the in-app preview about which template a class gets.
  */
-function getReportCardComponent(gradeLevel: string, gradeName: string | null, className: string = "") {
-  return resolveReportCardLevel(gradeLevel, gradeName, className) === "JUNIOR"
+function getReportCardComponent(
+  gradeLevel: string,
+  gradeName: string | null,
+  className: string = "",
+  stage: string | null = null
+) {
+  return resolveReportCardLevel(gradeLevel, gradeName, className, stage) === "JUNIOR"
     ? JuniorReportCard
     : SeniorReportCard;
 }
@@ -133,7 +140,9 @@ export async function generateReportCardBlob(
   const gradeLevel = reportCard.class?.grade?.level || "";
   const gradeName = reportCard.class?.grade?.name || null;
   const className = reportCard.class?.name || "";
-  const ReportCardComponent = getReportCardComponent(gradeLevel, gradeName, className);
+  const ReportCardComponent = getReportCardComponent(
+    gradeLevel, gradeName, className, reportCard.class?.grade?.stage ?? null
+  );
 
   return await pdf(<ReportCardComponent data={data} />).toBlob();
 }

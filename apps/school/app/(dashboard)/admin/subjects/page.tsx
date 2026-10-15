@@ -19,6 +19,7 @@ import {
   Download,
   BookOpen,
   AlertTriangle,
+  BookMarked,
 } from "lucide-react";
 import { Skeleton } from "@school/ui/components/skeleton";
 import {
@@ -42,6 +43,7 @@ import { SubjectsTable } from "@/components/subjects/subjects-table";
 import { EditSubjectDialog } from "@/components/subjects/edit-subject-dialog";
 import { SubjectSheet } from "@/components/subjects/subject-sheet";
 import { ImportSubjectsDialog } from "@/components/subjects/import-subjects-dialog";
+import { CatalogueSubjectsDialog } from "@/components/subjects/catalogue-subjects-dialog";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useToast } from "@school/ui/hooks/use-toast";
 import { useMobileHeaderRefresh } from "@/hooks/useMobileHeaderRefresh";
@@ -74,6 +76,7 @@ export default function SubjectsManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [subjectToDelete, setSubjectToDelete] = useState<any>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [catalogueOpen, setCatalogueOpen] = useState(false);
 
   // Mobile-only: which of the row-one filters is currently focused/open.
   const [activeMobileFilter, setActiveMobileFilter] = useState<
@@ -203,6 +206,11 @@ export default function SubjectsManagement() {
             <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
               <Download className="h-4 w-4 mr-2" />
               Import
+            </Button>
+            <Button variant="outline" onClick={() => setCatalogueOpen(true)}>
+              <BookMarked className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">From national list</span>
+              <span className="sm:hidden">National</span>
             </Button>
           </div>
           <Button className="shrink-0" asChild>
@@ -394,6 +402,12 @@ export default function SubjectsManagement() {
           </Pagination>
         </div>
       )}
+
+      <CatalogueSubjectsDialog
+        open={catalogueOpen}
+        onOpenChange={setCatalogueOpen}
+        onAdded={() => refetch()}
+      />
 
       {/* Edit Subject Dialog */}
       <EditSubjectDialog

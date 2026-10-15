@@ -169,7 +169,9 @@ third pass).
 The global `Grade` table, with its fixed unique `GRADE_1 … GRADE_12`, is replaced with
 **YearLevel per school**. Each year level has:
 - `schoolId`;
-- `stage`: `ECE` | `LOWER_PRIMARY` | `UPPER_PRIMARY` | `O_LEVEL` | `A_LEVEL` | `LSEND` | `YALE`;
+- `stage`: `ECE` | `LOWER_PRIMARY` | `UPPER_PRIMARY` | `JUNIOR_SECONDARY` | `O_LEVEL` |
+  `A_LEVEL` | `LSEND` | `YALE` (`JUNIOR_SECONDARY` was added when building: the 2013 Grades 8–9,
+  which keep the junior grading scale and report card until they run out);
 - `name` ("Grade 8", "Form 1", "Reception", "Level 2", "16+") and `shortName` ("G8", "F1");
 - `sequence` and `nextLevelId`;
 - `curriculum`: `LEGACY_2013` | `CBC_2023`;
@@ -310,7 +312,7 @@ come next (§8).
 | Phase | What | Done when |
 |---|---|---|
 | **3a** ✅ built 15 October 2026 (`docs/phases/phase-3a-checklist.md`) | Offices, schools, memberships, `schoolId` everywhere, Row-Level Security, migration of existing data | Two test schools can't see each other's data through any route, and RLS blocks a raw query |
-| **3b** | Per-school year levels and pathways; learner number; grading switched to `exam`; national subject catalogue and pathway rules | A school can run Grade 9 and Form 1 side by side; all grading/report-card tests pass |
+| **3b** ✅ built 16 October 2026 (`docs/phases/phase-3b-checklist.md`) | Per-school year levels and pathways; learner number; grading switched to `exam`; national subject catalogue and pathway rules | A school can run Grade 9 and Form 1 side by side; all grading/report-card tests pass |
 | **3c** | Offline-ready data: versions, tombstones, change-log triggers, teacher-scope queries | Every change to a syncable table appears in the change log; scope queries return only a teacher's data |
 | **4** | Account chain (HQ → PEO → DEBS → school), **first-login setup for a new school's head teacher** (academic year, terms, school info and the other required settings before anything else unlocks; requested 12 October 2026), password-reset requests through head/deputy → DEBS (§3b) using the one-time passwords already built, the same one-time passwords for office accounts, audit log, office app shell | The full chain works; a DEBS can't create a school outside its district |
 | **5** | Sync API: pull changes, push operations, conflict and idempotency handling | Tests: offline edits sync; conflicts and resends behave as specified |

@@ -24,7 +24,10 @@ export interface ClassView {
   id: string;
   name: string;
   grade: string;
-  gradeLevel: string;
+  /** Old grade number (GRADE_8…); empty for Forms and other new-curriculum levels */
+  gradeLevel: string | null;
+  /** Year level stage (Phase 3b) */
+  stage?: string;
   capacity: number;
   enrolled: number;
 }
@@ -66,10 +69,21 @@ export interface TeacherClassView {
   status: string;
 }
 
+/** A class whose daily register this teacher is taking while its class teacher is away. */
+export interface RegisterCoverClassView extends TeacherClassView {
+  coverId: string;
+  coverStartDate: string;
+  coverEndDate: string;
+  /** The class's own class teacher, for "Covering for …" */
+  classTeacherName: string | null;
+}
+
 export interface TeacherClassesResponse {
   classTeacherClasses: TeacherClassView[];
   subjectTeacherClasses: TeacherClassView[];
   allClasses: TeacherClassView[];
+  /** Register covers (today or upcoming). Not class-teacher rights — only the morning register. */
+  registerCoverClasses?: RegisterCoverClassView[];
 }
 
 export interface TeacherProfileView {

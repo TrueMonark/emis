@@ -60,6 +60,8 @@ export interface TimetableConfigInput {
   periodsAfterBreak: number;
   totalPeriods: number;
   doublePeriodConfigs?: DoublePeriodConfig[];
+  /** Period length per stage where it differs from periodDuration, e.g. { LOWER_PRIMARY: 30 } */
+  stagePeriodDurations?: Record<string, number> | null;
 }
 
 export interface TeacherAssignment {
@@ -292,6 +294,9 @@ export class TimetableService {
         periodsAfterBreak: input.periodsAfterBreak,
         totalPeriods: input.totalPeriods,
         doublePeriodConfigs: (input.doublePeriodConfigs || []) as any,
+        ...(input.stagePeriodDurations !== undefined && {
+          stagePeriodDurations: cleanStageDurations(input.stagePeriodDurations) as any,
+        }),
       } as any);
     } else {
       // Create new
@@ -312,6 +317,7 @@ export class TimetableService {
         periodsAfterBreak: input.periodsAfterBreak,
         totalPeriods: input.totalPeriods,
         doublePeriodConfigs: (input.doublePeriodConfigs || []) as any,
+        stagePeriodDurations: cleanStageDurations(input.stagePeriodDurations) as any,
       });
     }
   }
@@ -329,6 +335,13 @@ export class TimetableService {
 
     if (input.periodDuration < 1 || input.periodDuration > 120) {
       throw new ValidationError("Period duration must be between 1 and 120 minutes");
+    }
+
+    for (const [stage, minutes] of Object.entries(input.stagePeriodDurations ?? {})) {
+      if (minutes == null) continue;
+      if (!Number.isInteger(minutes) || minutes < 1 || minutes > 120) {
+        throw new ValidationError(`Period length for ${stage} must be between 1 and 120 minutes`);
+      }
     }
 
     if (input.breakDuration < 5 || input.breakDuration > 60) {
@@ -385,7 +398,7 @@ export class TimetableService {
     return prisma.class.findMany({
       where: { status: "ACTIVE" },
       include: { grade: true },
-      orderBy: [{ grade: { level: "asc" } }, { name: "asc" }],
+      orderBy: [{ grade: { sequence: "asc" } }, { name: "asc" }],
     });
   }
 
@@ -459,6 +472,8 @@ export class TimetableService {
                 id: true,
                 name: true,
                 level: true,
+                stage: true,
+                exam: true,
                 schoolLevel: true,
               },
             },
@@ -479,8 +494,12 @@ export class TimetableService {
     const packedDayClassIds = new Set(
       assignments
         .filter(a => {
-          const level = (a.class as any)?.grade?.level;
-          return level === "GRADE_8" || level === "GRADE_9";
+          const grade = (a.class as any)?.grade;
+          return (
+            grade?.level === "GRADE_8" ||
+            grade?.level === "GRADE_9" ||
+            /^\s*form\s*[12]\b/i.test(grade?.name ?? "")
+          );
         })
         .map(a => a.classId)
     );
@@ -587,6 +606,26 @@ export class TimetableService {
       periodSlots
     );
 
+    // Bell times follow each class's stage (e.g. 30-minute periods in lower primary). The
+    // solver works in period numbers, so only the clock times change.
+    if (hasStageDurations(config)) {
+      const stageByClass = new Map<string, string | null>();
+      for (const a of assignments) {
+        stageByClass.set(a.classId, ((a.class as any)?.grade?.stage as string | undefined) ?? null);
+      }
+      const slotsByStage = new Map<string, PeriodSlot[]>();
+      for (const entry of slotEntries) {
+        const stage = stageByClass.get(entry.classId) ?? null;
+        const key = stage ?? "";
+        if (!slotsByStage.has(key)) slotsByStage.set(key, this.generatePeriodSlots(config, stage));
+        const match = slotsByStage.get(key)!.find((p) => !p.isBreak && p.periodNumber === entry.periodNumber);
+        if (match) {
+          entry.startTime = match.startTime;
+          entry.endTime = match.endTime;
+        }
+      }
+    }
+
     // Delete existing timetable slots
     await prisma.timetableSlot.deleteMany({
       where: { academicYearId },
@@ -641,8 +680,9 @@ export class TimetableService {
   /**
    * Generate period slots from configuration
    */
-  private generatePeriodSlots(config: TimetableConfiguration): PeriodSlot[] {
+  private generatePeriodSlots(config: TimetableConfiguration, stage?: string | null): PeriodSlot[] {
     const slots: PeriodSlot[] = [];
+    const periodDuration = periodDurationFor(config, stage);
     const startMinutes = this.parseTime(config.schoolStartTime);
     let currentMinutes = startMinutes;
     let periodNumber = 1;
@@ -650,7 +690,7 @@ export class TimetableService {
     // Periods before break
     for (let i = 0; i < config.periodsBeforeBreak; i++) {
       const startTime = this.formatTime(currentMinutes);
-      currentMinutes += config.periodDuration;
+      currentMinutes += periodDuration;
       const endTime = this.formatTime(currentMinutes);
 
       slots.push({
@@ -683,7 +723,7 @@ export class TimetableService {
     // Periods after break
     for (let i = 0; i < config.periodsAfterBreak; i++) {
       const startTime = this.formatTime(currentMinutes);
-      currentMinutes += config.periodDuration;
+      currentMinutes += periodDuration;
       const endTime = this.formatTime(currentMinutes);
 
       slots.push({
@@ -814,7 +854,16 @@ export class TimetableService {
     };
 
     const config = await timetableConfigurationRepository.findByAcademicYearId(academicYear.id);
-    const periodSlots = config ? this.generatePeriodSlots(config) : [];
+    // One class: its own stage's bell times. Several classes: the school's default times.
+    let classStage: string | null = null;
+    if (filters?.classId && config && hasStageDurations(config)) {
+      const cls = await prisma.class.findUnique({
+        where: { id: filters.classId },
+        select: { grade: { select: { stage: true } } },
+      });
+      classStage = cls?.grade.stage ?? null;
+    }
+    const periodSlots = config ? this.generatePeriodSlots(config, classStage) : [];
 
     return {
       slots, // Add slots array for frontend
@@ -900,3 +949,27 @@ export class TimetableService {
 
 // Singleton instance
 export const timetableService = new TimetableService();
+
+/** Period length for a stage: the stage's own length if set, otherwise the default. */
+function periodDurationFor(config: TimetableConfiguration, stage?: string | null): number {
+  const byStage = (config.stagePeriodDurations ?? null) as Record<string, number> | null;
+  const minutes = stage && byStage ? byStage[stage] : undefined;
+  return typeof minutes === "number" && minutes > 0 ? minutes : config.periodDuration;
+}
+
+function hasStageDurations(config: TimetableConfiguration): boolean {
+  const byStage = config.stagePeriodDurations as Record<string, number> | null;
+  return !!byStage && Object.keys(byStage).length > 0;
+}
+
+/** Keeps only real values; an empty result is stored as null (same length for every stage). */
+function cleanStageDurations(
+  input: Record<string, number | null | undefined> | null | undefined
+): Record<string, number> | null {
+  if (!input) return null;
+  const out: Record<string, number> = {};
+  for (const [stage, minutes] of Object.entries(input)) {
+    if (typeof minutes === "number" && minutes > 0) out[stage] = minutes;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}

@@ -69,8 +69,9 @@ Coming next: `apps/office/` (DEBS + PEO, one app, scope decides what you see).
   ACTIVE `SchoolMembership` and runs the request inside that school; the default `prisma` client
   wraps every query in a transaction that sets the school (`SET LOCAL ROLE emis_app`,
   `app.school_id`). New rows get the school's id from the column default, so code never sets it.
-- **National (global) tables:** users, school_memberships, schools, education_offices, grades
-  (until Phase 3b), role_permissions, ECZ grading schemes. `teacher_profiles` belongs to the
+- **National (global) tables:** users, school_memberships, schools, education_offices,
+  catalogue_subjects and pathways (read-only for the app), role_permissions, ECZ grading
+  schemes. `teacher_profiles` belongs to the
   person: a school sees the profiles of its current and former members.
 - **A new school-owned model** needs: `schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))`
   plus the `school` relation and `@@index([schoolId])`; uniques made per school
@@ -92,6 +93,24 @@ Coming next: `apps/office/` (DEBS + PEO, one app, scope decides what you see).
 - Head teacher and deputy head have **the same rights**: check with `isSchoolLeader(role)`
   (`@school/shared/auth/role-hierarchy`), never one specific leadership role. `ADMIN` is the
   old name for the head's account and is no longer given to anyone.
+
+## Year levels, curriculum and learner numbers (Phase 3b, since 2026-10-16)
+
+- **`Grade` is a school's own year level** ("Grade 8", "Form 1", "Reception", "16+"), with
+  `stage`, `curriculum` and `exam`. `level` (GRADE_1…12) is only a leftover for 2013-curriculum
+  grades and is **empty for Forms** — never base a rule on it. Use the helpers in
+  `@school/shared/curriculum/year-levels`: `gradingScaleFor`, `reportCardTypeFor`,
+  `mergesPhysicsAndChemistry`, `schoolLevelForStage`; or pass `grade.stage` as the last
+  argument of `resolveECZLevel` / `resolveReportCardLevel` / `getCurriculumType`. "Secondary" is
+  `grade.schoolLevel === "SECONDARY"`. Order is `sequence` (per school); progression is
+  `nextGradeId` (Grade 12 → Form 5), never `sequence + 1`.
+- **National subject catalogue and pathways** live in `packages/shared/src/curriculum`
+  (`catalogue.ts`, `pathways.ts`) and in the tables the Phase 3b migration filled. After
+  changing the TS lists, run `npm run db:sync-catalogue`. A school subject links to its entry
+  with `catalogueSubjectId` (empty = the school's own local subject). Pathway checks only warn.
+- **Learner number** (`Student.learnerNumber`, `ZM26-4K7Q2PB-H`) is made by the database
+  (`emis_new_learner_number()`, column default). Never set or change it in code; validate typed
+  numbers with `normalizeLearnerNumber`. The SQL and TS check-character rules must stay identical.
 
 ## Stack
 
@@ -320,6 +339,13 @@ practice and has been fully removed — `@serwist/next`/`serwist` are no longer 
 first diagnosing why Phase 1 didn't work** — re-shipping the same broken mechanism helps no one.
 
 ## Before marking any task done
+
+**How changes are verified (developer's instruction, 2026-10-15):** don't run the test suite,
+builds or scripts in the assistant's workspace. Every delivery comes with a click-through
+checklist in `docs/phases/`, which the developer works through and reports back. Keep writing
+and updating integration tests for changed behaviour, but the developer runs them. A type check
+(`tsc --noEmit`) to catch compile errors before handing over is fine.
+
 
 1. Run `npm run lint` and `npm run typecheck` (repo root).
 2. If you touched `apps/server/src/api/**`, re-check the route against the chain above — does it use

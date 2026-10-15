@@ -38,11 +38,18 @@ export const PATCH = withAuth(
       const context: AuthContext = { userId: user.userId, role: user.role as Role };
 
       const body = await request.json();
-      const { classTeacherRemarks, headTeacherRemarks, promotionStatus, nextGrade } = body;
+      const { classTeacherRemarks, headTeacherRemarks, promotionStatus, nextGrade, nextGradeName } = body;
 
       const reportCard = await reportCardService.updateReportCard(
         id,
-        { classTeacherRemarks, headTeacherRemarks, promotionStatus, nextGrade },
+        {
+          classTeacherRemarks,
+          headTeacherRemarks,
+          promotionStatus,
+          nextGrade,
+          nextGradeName:
+            nextGradeName === undefined ? undefined : nextGradeName ? String(nextGradeName).slice(0, 40) : null,
+        },
         context
       );
 

@@ -2,6 +2,7 @@
  * Pure calculation functions — no server-side imports.
  * Safe to import from client components.
  */
+import { gradingScaleFor } from '../curriculum/year-levels';
 
 export interface StudentScore {
   subject: string;
@@ -29,7 +30,21 @@ export interface SubjectWithCore {
   points: number;
 }
 
-export function getCurriculumType(gradeLevel: string): CurriculumType {
+/**
+ * Which best-six rule applies. Phase 3b: pass the year level's stage — it decides (primary →
+ * OLD_SYSTEM, 2013 junior secondary → STANDARD, everything else → NEW_SYSTEM). Without a
+ * stage the old grade number is used, as before.
+ */
+export function getCurriculumType(
+  gradeLevel: string | null | undefined,
+  stage?: string | null,
+  gradeName?: string | null,
+  className?: string | null,
+): CurriculumType {
+  if (stage || !gradeLevel) {
+    const scale = gradingScaleFor({ stage, level: gradeLevel, name: gradeName }, className);
+    return scale === 'PRIMARY' ? 'OLD_SYSTEM' : scale === 'JUNIOR' ? 'STANDARD' : 'NEW_SYSTEM';
+  }
   const oldSystemGrades = [
     'GRADE_1', 'GRADE_2', 'GRADE_3', 'GRADE_4', 'GRADE_5',
     'GRADE_6', 'GRADE_7',
@@ -169,13 +184,15 @@ export function computeBestOfSixFromReportCard(
     totalMark: number | null;
     grade: string | null;
   }>,
-  gradeLevel: string,
+  gradeLevel: string | null | undefined,
   gradeName?: string | null,
   className?: string | null,
+  /** Phase 3b: the year level's stage */
+  stage?: string | null,
 ): string {
   if (subjects.length === 0) return '';
 
-  const curriculumType = getCurriculumType(gradeLevel);
+  const curriculumType = getCurriculumType(gradeLevel, stage, gradeName, className);
 
   const isFormClass =
     (gradeName != null && /\bForm\s*[1-9]\b|^F[1-9][\s\-]/i.test(gradeName.trim())) ||

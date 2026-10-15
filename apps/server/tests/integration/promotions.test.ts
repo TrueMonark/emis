@@ -133,6 +133,13 @@ describe("student promotions", () => {
       expect(promotionRecords[0].status).toBe("PROMOTED");
       expect(promotionRecords[0].fromGradeLevel).toBe(sourceGrade.level);
       expect(promotionRecords[0].toGradeLevel).toBe(nextGrade.level);
+      // Phase 3b: year-level ids and names are recorded too (Forms have no old grade number).
+      expect(promotionRecords[0]).toMatchObject({
+        fromGradeId: sourceGrade.id,
+        fromGradeName: sourceGrade.name,
+        toGradeId: nextGrade.id,
+        toGradeName: nextGrade.name,
+      });
     });
 
     it("GRADUATE marks the student GRADUATED and creates no enrollment", async () => {

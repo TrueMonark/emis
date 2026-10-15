@@ -4,7 +4,7 @@ import { Role } from "@school/shared/types/prisma-enums";
 import { UnauthorizedError, NotFoundError, ValidationError } from "@/lib/errors";
 import { requireMinimumRole, AuthContext } from "@/lib/auth/authorization";
 import prisma from "@/lib/db/prisma";
-import { calculateECZGrade, mapPrismaGradeLevelToECZLevel } from "@school/shared/grading/ecz-grading-system";
+import { calculateECZGrade, resolveECZLevel } from "@school/shared/grading/ecz-grading-system";
 
 /**
  * Student Assessment Result Service Layer
@@ -262,7 +262,12 @@ export const studentAssessmentResultService = {
         }
 
         const percentage = (result.marksObtained! / assessment.totalMarks) * 100;
-        const gradeLevel = mapPrismaGradeLevelToECZLevel(assessment.class.grade.level);
+        const gradeLevel = resolveECZLevel(
+          assessment.class.grade.level,
+          assessment.class.grade.name,
+          assessment.class.name,
+          assessment.class.grade.stage
+        );
         const correctGrade = calculateECZGrade(percentage, gradeLevel);
 
         if (result.grade !== correctGrade) {

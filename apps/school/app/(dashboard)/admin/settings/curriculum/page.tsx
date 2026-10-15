@@ -38,11 +38,14 @@ import { useToast } from "@school/ui/hooks/use-toast";
 import { authFetch } from "@/lib/api-client";
 
 // School level categories based on Zambian education system
+// Tabs group the school's year levels by stage (Phase 3b), so Grade 9 and Form 1 each land in
+// the right place whatever they're called.
 const SCHOOL_LEVELS = [
-  { id: "lower-primary", label: "Lower Primary", grades: [1, 2, 3, 4] },
-  { id: "upper-primary", label: "Upper Primary", grades: [5, 6, 7] },
-  { id: "junior-secondary", label: "Junior Secondary", grades: [8, 9] },
-  { id: "senior-secondary", label: "Senior Secondary", grades: [10, 11, 12] },
+  { id: "primary", label: "Primary", stages: ["ECE", "LOWER_PRIMARY", "UPPER_PRIMARY"] },
+  { id: "junior-secondary", label: "Junior Secondary", stages: ["JUNIOR_SECONDARY"] },
+  { id: "o-level", label: "O-level / Senior", stages: ["O_LEVEL"] },
+  { id: "a-level", label: "A-level", stages: ["A_LEVEL"] },
+  { id: "other", label: "Other (LSEND, YALE)", stages: ["LSEND", "YALE"] },
 ];
 
 interface Subject {
@@ -58,7 +61,8 @@ interface Subject {
 interface Grade {
   id: string;
   name: string;
-  level: string;
+  level: string | null;
+  stage: string;
   schoolLevel: string;
   sequence: number;
 }
@@ -81,11 +85,6 @@ interface ClassSubject {
   subject: Subject;
 }
 
-// Helper function to extract grade number from grade level enum
-function getGradeNumber(gradeLevel: string): number {
-  const match = gradeLevel.match(/\d+/);
-  return match ? parseInt(match[0], 10) : 0;
-}
 
 export default function StreamCurriculumPage() {
   const { toast } = useToast();
@@ -448,11 +447,10 @@ export default function StreamCurriculumPage() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={handleTabChange}>
-              <TabsList className="grid w-full grid-cols-4 mb-6">
+              <TabsList className="grid w-full grid-cols-5 mb-6">
                 {SCHOOL_LEVELS.map((level) => {
                   const levelGrades = grades.filter((g) => {
-                    const gradeNum = getGradeNumber(g.level);
-                    return level.grades.includes(gradeNum);
+                    return level.stages.includes(g.stage);
                   });
                   const levelClasses = classes.filter((c) =>
                     levelGrades.some((g) => g.id === c.gradeId)
@@ -474,8 +472,7 @@ export default function StreamCurriculumPage() {
 
               {SCHOOL_LEVELS.map((level) => {
                 const levelGrades = grades.filter((g) => {
-                  const gradeNum = getGradeNumber(g.level);
-                  return level.grades.includes(gradeNum);
+                  return level.stages.includes(g.stage);
                 });
 
                 return (

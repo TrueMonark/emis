@@ -20,6 +20,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { cn, formatCompactClassLabel } from "@/lib/utils";
 import { Skeleton } from "@school/ui/components/skeleton";
@@ -42,6 +44,7 @@ import { useTeacherStudents } from "@/hooks/useTeacherStudents";
 import { StudentPerformanceRadar } from "@/components/performance/student-performance-radar";
 import { StudentClassRankings } from "@/components/performance/student-class-rankings";
 import { StudentSubjectPerformance } from "@/components/performance/student-subject-performance";
+import { SubjectPerformanceTable } from "@/components/performance/subject-performance-table";
 import { useStudentPerformance } from "@/hooks/useStudentPerformance";
 import { useSubjectPerformance } from "@/hooks/useSubjectPerformance";
 import {
@@ -117,7 +120,25 @@ export default function TeacherStudentsPage() {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [subjectTeacherPage, setSubjectTeacherPage] = useState(1);
-  const subjectTeacherPageSize = 10;
+  // Subject-teacher view: cards (grid) or one row per learner (list). Remembered per browser.
+  const [subjectViewMode, setSubjectViewMode] = useState<"grid" | "list">("grid");
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("performance-view") === "list") setSubjectViewMode("list");
+    } catch {
+      // storage unavailable: default view
+    }
+  }, []);
+  const changeSubjectViewMode = (mode: "grid" | "list") => {
+    setSubjectViewMode(mode);
+    setSubjectTeacherPage(1);
+    try {
+      localStorage.setItem("performance-view", mode);
+    } catch {
+      // storage unavailable: the choice just isn't remembered
+    }
+  };
+  const subjectTeacherPageSize = subjectViewMode === "list" ? 25 : 10;
   const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   // Use the hook for student list
@@ -871,7 +892,38 @@ export default function TeacherStudentsPage() {
 
                     return (
                       <div className="flex flex-col lg:min-h-[500px]">
-                        {/* Cards grid */}
+                        {/* Grid / list switch */}
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-xs text-muted-foreground">
+                            {totalStudents} student{totalStudents === 1 ? "" : "s"}
+                          </p>
+                          <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="View">
+                            <Button
+                              variant={subjectViewMode === "grid" ? "secondary" : "ghost"}
+                              size="sm"
+                              className="h-7 gap-1.5 px-2.5 text-xs"
+                              aria-pressed={subjectViewMode === "grid"}
+                              onClick={() => changeSubjectViewMode("grid")}>
+                              <LayoutGrid className="h-3.5 w-3.5" />
+                              Grid
+                            </Button>
+                            <Button
+                              variant={subjectViewMode === "list" ? "secondary" : "ghost"}
+                              size="sm"
+                              className="h-7 gap-1.5 px-2.5 text-xs"
+                              aria-pressed={subjectViewMode === "list"}
+                              onClick={() => changeSubjectViewMode("list")}>
+                              <List className="h-3.5 w-3.5" />
+                              List
+                            </Button>
+                          </div>
+                        </div>
+
+                        {subjectViewMode === "list" ? (
+                          <div className="flex-grow">
+                            <SubjectPerformanceTable students={paginatedStudents} startIndex={startIndex} />
+                          </div>
+                        ) : (
                         <div className="flex-grow">
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
                             {paginatedStudents.map((student) => {
@@ -894,6 +946,7 @@ export default function TeacherStudentsPage() {
                             })}
                           </div>
                         </div>
+                        )}
 
                         {/* Mobile compact pagination */}
                         {totalPages > 1 && (

@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { normalizeLearnerNumber } from "@school/shared/curriculum/learner-number";
 import {
   Student,
   StudentStatus,
@@ -330,6 +331,8 @@ export class StudentService {
         { firstName: { contains: filters.search, mode: "insensitive" } },
         { lastName: { contains: filters.search, mode: "insensitive" } },
         { studentNumber: { contains: filters.search, mode: "insensitive" } },
+        // Learner number, typed with or without dashes ("ZM26-4K7Q2PB-H" or "zm264k7q2pbh")
+        { learnerNumber: { contains: learnerNumberSearchText(filters.search), mode: "insensitive" } },
       ];
     }
 
@@ -429,6 +432,8 @@ export class StudentService {
         { firstName: { contains: filters.search, mode: "insensitive" } },
         { lastName: { contains: filters.search, mode: "insensitive" } },
         { studentNumber: { contains: filters.search, mode: "insensitive" } },
+        // Learner number, typed with or without dashes ("ZM26-4K7Q2PB-H" or "zm264k7q2pbh")
+        { learnerNumber: { contains: learnerNumberSearchText(filters.search), mode: "insensitive" } },
       ];
     }
 
@@ -840,3 +845,8 @@ export class StudentService {
 }
 
 export const studentService = new StudentService();
+
+/** Search text for learner numbers: a full number in any spacing becomes its standard form. */
+function learnerNumberSearchText(search: string): string {
+  return normalizeLearnerNumber(search) ?? search.trim();
+}

@@ -45,6 +45,8 @@ interface UpdateReportCardInput {
   headTeacherRemarks?: string;
   promotionStatus?: PromotionStatus;
   nextGrade?: string;
+  /** Name of the year level the learner moves to ("Form 2"); null clears it */
+  nextGradeName?: string | null;
 }
 
 interface CalculatePositionsInput {

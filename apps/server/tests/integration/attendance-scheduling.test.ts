@@ -12,6 +12,7 @@ import {
   createTestSubject,
   createTestTimetableSlot,
   enrollTestStudent,
+  assignClassTeacher,
 } from "../helpers/db";
 
 // Only Mon–Fri map to a DayOfWeek — matches JS_DAY_TO_DAYOFWEEK in
@@ -61,7 +62,7 @@ describe("period attendance scheduling check", () => {
       { dayOfWeek: DAY_MAP[monday.getDay()] }
     );
 
-    return { owner, other, term, testClass, student, slot, monday, tuesday };
+    return { owner, other, academicYear, term, testClass, student, slot, monday, tuesday };
   }
 
   it("lets the owning teacher mark attendance for their own slot on the correct day", async () => {
@@ -140,7 +141,9 @@ describe("period attendance scheduling check", () => {
   });
 
   it("does not affect the daily register (no timetableSlotId)", async () => {
-    const { other, term, testClass, student, monday } = await setup();
+    const { other, academicYear, term, testClass, student, monday } = await setup();
+    // The slot check doesn't apply to the daily register; the class-teacher rule does.
+    await assignClassTeacher(other.teacherProfile!.id, testClass.id, academicYear.id);
     const context = { userId: other.user.id, role: Role.TEACHER };
 
     await expect(

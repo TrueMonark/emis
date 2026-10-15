@@ -648,14 +648,6 @@ export class SubjectTeacherAssignmentService {
    * Validate that class is secondary grade (8-12)
    */
   private async validateSecondaryGrade(classId: string): Promise<void> {
-    const SECONDARY_GRADES = [
-      "GRADE_8",
-      "GRADE_9",
-      "GRADE_10",
-      "GRADE_11",
-      "GRADE_12",
-    ];
-
     const classEntity = await classRepository.findById(classId);
     if (!classEntity) {
       throw new NotFoundError("Class not found");
@@ -665,9 +657,9 @@ export class SubjectTeacherAssignmentService {
       where: { id: classEntity.gradeId },
     });
 
-    if (!grade || !SECONDARY_GRADES.includes(grade.level)) {
+    if (!grade || grade.schoolLevel !== "SECONDARY") {
       throw new UnauthorizedError(
-        "HOD can only manage assignments for secondary grades (8-12)"
+        "HOD can only manage assignments for secondary year levels"
       );
     }
   }
@@ -918,11 +910,7 @@ export class SubjectTeacherAssignmentService {
       },
       // Scope to secondary grades only
       class: {
-        grade: {
-          level: {
-            in: ["GRADE_8", "GRADE_9", "GRADE_10", "GRADE_11", "GRADE_12"],
-          },
-        },
+        grade: { schoolLevel: "SECONDARY" },
       },
     };
 

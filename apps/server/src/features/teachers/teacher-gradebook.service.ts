@@ -151,6 +151,8 @@ export class TeacherGradebookService {
         grade: {
           select: {
             level: true,
+            stage: true,
+            exam: true,
             name: true,
           },
         },
@@ -166,7 +168,8 @@ export class TeacherGradebookService {
     const gradeLevel: GradeLevel = resolveECZLevel(
       classInfo.grade.level,
       classInfo.grade.name,
-      classInfo.name
+      classInfo.name,
+      classInfo.grade.stage
     );
 
     logger.debug("Grade level determined", {

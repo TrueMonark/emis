@@ -21,6 +21,7 @@ import {
   createTestGrade,
   createTestClass,
   createTestStudent,
+  assignClassTeacher,
 } from "../helpers/db";
 
 // Route-level coverage. The N+1 regression test (tests/integration/bulk-attendance.test.ts)
@@ -51,6 +52,8 @@ describe("attendance routes", () => {
     const grade = await createTestGrade();
     const testClass = await createTestClass(grade.id);
     classId = testClass.id;
+    // The daily register is the class teacher's job (or a cover teacher's).
+    await assignClassTeacher(teacher.teacherProfile!.id, classId, academicYear.id);
     const student = await createTestStudent();
     studentId = student.id;
   });

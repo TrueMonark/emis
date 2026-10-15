@@ -5,6 +5,7 @@ import { classRepository } from "../classes/class.repository";
 import { termRepository } from "../terms/term.repository";
 import { studentRepository } from "../students/student.repository";
 import { verifySlotOwnership } from "@/lib/timetable/verify-slot-ownership";
+import { registerCoverService } from "./registerCover.service";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { requireMinimumRole, AuthContext } from "@/lib/auth/authorization";
 import {
@@ -133,7 +134,12 @@ export class AttendanceRecordService {
 
     this.validateDateNotFuture(data.date);
     await this.validateDateInTerm(data.date, data.termId);
-    await this.validateReferences(data.studentId, data.classId, data.termId);
+    const { term } = await this.validateReferences(data.studentId, data.classId, data.termId);
+    if (!data.timetableSlotId) {
+      await registerCoverService.assertCanTakeDailyRegister(
+        data.classId, data.date, context, term.academicYearId
+      );
+    }
 
     const dateOnly = normalizeToUtcMidnight(data.date);
     const slotId = data.timetableSlotId ?? null;
@@ -207,6 +213,11 @@ export class AttendanceRecordService {
     if (!term) throw new NotFoundError("Term not found");
     if (term.academicYear.isClosed) {
       throw new ValidationError("Cannot mark attendance in a closed academic year");
+    }
+    if (!data.timetableSlotId) {
+      await registerCoverService.assertCanTakeDailyRegister(
+        data.classId, data.date, context, term.academicYearId
+      );
     }
 
     const dateOnly = normalizeToUtcMidnight(data.date);
@@ -387,6 +398,14 @@ export class AttendanceRecordService {
     if (!existingRecord) throw new NotFoundError("Attendance record not found");
     if (existingRecord.term.academicYear.isClosed) {
       throw new ValidationError("Cannot update attendance in a closed academic year");
+    }
+    if (!existingRecord.timetableSlotId) {
+      await registerCoverService.assertCanTakeDailyRegister(
+        existingRecord.classId,
+        existingRecord.date,
+        context,
+        existingRecord.term.academicYearId
+      );
     }
 
     return attendanceRecordRepository.update(id, {

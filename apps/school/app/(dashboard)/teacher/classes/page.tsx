@@ -51,6 +51,8 @@ import { History } from "lucide-react";
 import { useInvalidation } from "@/hooks/useInvalidation";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/api-client";
+import { RegisterCoverDialog, formatCoverDay } from "@/components/attendance/register-cover-dialog";
+import { UserRoundCheck } from "lucide-react";
 
 type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED";
 
@@ -64,6 +66,19 @@ interface ClassData {
   teachingSubject?: string;
   teachingSubjectId?: string;
   status: string;
+  /** Set for a class whose morning register this teacher is covering. */
+  isCover?: boolean;
+  coverStartDate?: string;
+  coverEndDate?: string;
+  classTeacherName?: string | null;
+}
+
+/** A cover has started when its first day (UTC midnight) is today or earlier. */
+function coverHasStarted(c: ClassData): boolean {
+  if (!c.coverStartDate) return false;
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return new Date(c.coverStartDate).getTime() <= todayUtc;
 }
 
 interface StudentData {
@@ -96,16 +111,24 @@ export default function TeacherClassesPage() {
 
   const [classTeacherClasses, setClassTeacherClasses] = useState<ClassData[]>([]);
   const [subjectTeacherClasses, setSubjectTeacherClasses] = useState<ClassData[]>([]);
+  const [coverClasses, setCoverClasses] = useState<ClassData[]>([]);
+  const [coverDialogOpen, setCoverDialogOpen] = useState(false);
   const [studentsByClass, setStudentsByClass] = useState<Record<string, StudentData[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const allClasses = [...classTeacherClasses, ...subjectTeacherClasses];
+  const allClasses = [...classTeacherClasses, ...coverClasses, ...subjectTeacherClasses];
   const selectedClass = allClasses.find(
     (c) => c.id === selectedClassId && (c.teachingSubjectId ?? null) === selectedSubjectId
   );
   const selectedStudents = selectedClassId ? studentsByClass[selectedClassId] || [] : [];
   const isClassTeacher = classTeacherClasses.some((c) => c.id === selectedClassId);
+  // Covering the register for an absent class teacher: register only, from the first day.
+  const isCoveringToday =
+    !isClassTeacher &&
+    coverClasses.some((c) => c.id === selectedClassId && coverHasStarted(c));
+  const canTakeRegister = isClassTeacher || isCoveringToday;
+  const isCoverOnly = !!selectedClass?.isCover;
 
   // ── Fetch active term ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -141,16 +164,26 @@ export default function TeacherClassesPage() {
           setError(result.error || "Failed to load classes");
           setClassTeacherClasses([]);
           setSubjectTeacherClasses([]);
+          setCoverClasses([]);
           return;
         }
         const data = result.data;
         setClassTeacherClasses(data.classTeacherClasses || []);
         setSubjectTeacherClasses(data.subjectTeacherClasses || []);
+        const covers: ClassData[] = (data.registerCoverClasses || []).map((c: ClassData) => ({
+          ...c,
+          isCover: true,
+          teachingSubjectId: undefined,
+        }));
+        setCoverClasses(covers);
         setError(null);
 
         if (data.classTeacherClasses?.length > 0) {
           setSelectedClassId(data.classTeacherClasses[0].id);
           setSelectedSubjectId(data.classTeacherClasses[0].teachingSubjectId ?? null);
+        } else if (covers.length > 0) {
+          setSelectedClassId(covers[0].id);
+          setSelectedSubjectId(null);
         } else if (data.subjectTeacherClasses?.length > 0) {
           setSelectedClassId(data.subjectTeacherClasses[0].id);
           setSelectedSubjectId(data.subjectTeacherClasses[0].teachingSubjectId ?? null);
@@ -374,6 +407,11 @@ export default function TeacherClassesPage() {
       </div>
     ));
 
+  const coverLabel = (c: ClassData) =>
+    coverHasStarted(c)
+      ? `Covering until ${formatCoverDay(c.coverEndDate!)}`
+      : `Covering from ${formatCoverDay(c.coverStartDate!)}`;
+
   // ── Shared row renderer helpers ──────────────────────────────────────────────
   const renderClassRows = (classes: ClassData[], mode: "class" | "subject") =>
     classes.flatMap((classItem, index) => [
@@ -403,9 +441,15 @@ export default function TeacherClassesPage() {
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 text-xs hidden sm:inline-flex">
-                {classItem.status}
-              </Badge>
+              {classItem.isCover ? (
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-xs">
+                  {coverLabel(classItem)}
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 text-xs hidden sm:inline-flex">
+                  {classItem.status}
+                </Badge>
+              )}
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </div>
           </div>
@@ -437,9 +481,19 @@ export default function TeacherClassesPage() {
           </span>
         </td>
         <td className="py-3 px-2">
-          <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100">
-            {classItem.status}
-          </Badge>
+          {classItem.isCover ? (
+            <Badge
+              variant="secondary"
+              className="bg-amber-100 text-amber-800 hover:bg-amber-100"
+              title={classItem.classTeacherName ? `Covering for ${classItem.classTeacherName}` : undefined}
+            >
+              {coverLabel(classItem)}
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100">
+              {classItem.status}
+            </Badge>
+          )}
         </td>
         <td className="py-3 px-2 text-center">
           <div className="flex gap-1 justify-center">
@@ -453,13 +507,13 @@ export default function TeacherClassesPage() {
             >
               <Eye className="h-4 w-4" />
             </Button>
-            <Button
+            {!classItem.isCover && <Button
               variant="outline" size="sm"
               onClick={() => handleExportClassListClick(classItem.id, mode, classItem.teachingSubjectId)}
               className="h-8 w-8 p-0" title="Export class list"
             >
               <Download className="h-4 w-4" />
-            </Button>
+            </Button>}
           </div>
         </td>
       </tr>,
@@ -537,9 +591,21 @@ export default function TeacherClassesPage() {
                             </tbody>
                           </table>
 
-                          {classTeacherClasses.length === 0 && (
+                          {classTeacherClasses.length === 0 && coverClasses.length === 0 && (
                             <div className="text-center py-12 text-muted-foreground px-4">
                               <p>No class assigned as class teacher</p>
+                            </div>
+                          )}
+
+                          {/* Registers handed to this teacher while a class teacher is away */}
+                          {coverClasses.length > 0 && (
+                            <div className="mt-4">
+                              <p className="px-4 lg:px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Covering the register
+                              </p>
+                              <table className="w-full">
+                                <tbody>{renderClassRows(coverClasses, "class")}</tbody>
+                              </table>
                             </div>
                           )}
 
@@ -689,10 +755,12 @@ export default function TeacherClassesPage() {
                 )}
               </div>
             </div>
-            <div className="flex-1 flex flex-col overflow-hidden px-0">
+            {/* min-h-0 lets the list shrink and scroll inside the card; without it a long class
+                list grows past the card and pushes the register buttons out of sight. */}
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-0">
               {selectedClass ? (
-                <div className="flex flex-col h-full">
-                  <ScrollArea className="flex-1 px-6">
+                <div className="flex flex-col h-full min-h-0">
+                  <ScrollArea className="flex-1 min-h-0 px-6">
                     <div className="border rounded-md mt-2">
                       <Table>
                         <TableHeader>
@@ -743,16 +811,34 @@ export default function TeacherClassesPage() {
                       </div>
                     )}
                   </ScrollArea>
-                  {isClassTeacher && (
+                  {(canTakeRegister || isCoverOnly) && (
                     <div className="mt-auto px-6 pt-4 pb-6 border-t space-y-2 shrink-0">
-                      <Button className="w-full" onClick={handleOpenAttendance}>
-                        <ListCheck className="h-4 w-4 mr-2" />
-                        Take Register
-                      </Button>
-                      <Button variant="outline" className="w-full" onClick={() => setAttendanceSheetOpen(true)}>
-                        <History className="h-4 w-4 mr-2" />
-                        View Attendance
-                      </Button>
+                      {isCoverOnly && (
+                        <p className="text-xs text-muted-foreground">
+                          {selectedClass.classTeacherName
+                            ? `Covering for ${selectedClass.classTeacherName}. `
+                            : ""}
+                          {coverLabel(selectedClass)}.
+                        </p>
+                      )}
+                      {canTakeRegister && (
+                        <>
+                          <Button className="w-full" onClick={handleOpenAttendance}>
+                            <ListCheck className="h-4 w-4 mr-2" />
+                            Take Register
+                          </Button>
+                          <Button variant="outline" className="w-full" onClick={() => setAttendanceSheetOpen(true)}>
+                            <History className="h-4 w-4 mr-2" />
+                            View Attendance
+                          </Button>
+                        </>
+                      )}
+                      {isClassTeacher && (
+                        <Button variant="ghost" className="w-full" onClick={() => setCoverDialogOpen(true)}>
+                          <UserRoundCheck className="h-4 w-4 mr-2" />
+                          Hand over register
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -800,7 +886,7 @@ export default function TeacherClassesPage() {
               </div>
 
               {/* Scrollable body */}
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 min-h-0 overflow-y-auto">
 
                 {/* ── Search field ── */}
                 <div className="px-4 pt-3 pb-1">
@@ -896,9 +982,15 @@ export default function TeacherClassesPage() {
               </div>
 
               {/* Footer actions — 3 buttons in a row */}
-              <div className="shrink-0 px-4 py-3 border-t">
+              <div className="shrink-0 px-4 py-3 border-t space-y-2">
+                {isCoverOnly && (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedClass.classTeacherName ? `Covering for ${selectedClass.classTeacherName}. ` : ""}
+                    {coverLabel(selectedClass)}.
+                  </p>
+                )}
                 <div className="flex gap-2">
-                  {isClassTeacher && (
+                  {canTakeRegister && (
                     <>
                       <Button
                         size="sm"
@@ -919,21 +1011,43 @@ export default function TeacherClassesPage() {
                       </Button>
                     </>
                   )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={cn("flex-1", !isClassTeacher && "w-full")}
-                    onClick={() => handleExportClassListClick(selectedClass.id, isClassTeacher ? "class" : "subject", selectedClass.teachingSubjectId)}
-                  >
-                    <Download className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                    <span className="truncate">Export</span>
-                  </Button>
+                  {!isCoverOnly && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn("flex-1", !isClassTeacher && "w-full")}
+                      onClick={() => handleExportClassListClick(selectedClass.id, isClassTeacher ? "class" : "subject", selectedClass.teachingSubjectId)}
+                    >
+                      <Download className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                      <span className="truncate">Export</span>
+                    </Button>
+                  )}
                 </div>
+                {isClassTeacher && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setCoverDialogOpen(true)}
+                  >
+                    <UserRoundCheck className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                    Hand over register
+                  </Button>
+                )}
               </div>
             </>
           )}
         </SheetContent>
       </Sheet>
+
+      {selectedClass && isClassTeacher && (
+        <RegisterCoverDialog
+          open={coverDialogOpen}
+          onOpenChange={setCoverDialogOpen}
+          classId={selectedClass.id}
+          className={selectedClass.name}
+        />
+      )}
 
       {/* ── Attendance register dialog ───────────────────────────────────────── */}
       <Dialog open={attendanceDialogOpen} onOpenChange={setAttendanceDialogOpen}>
@@ -1038,7 +1152,7 @@ export default function TeacherClassesPage() {
             return (
               <>
                 {/* Mobile: card-style rows */}
-                <div className="sm:hidden flex-1 overflow-y-auto">
+                <div className="sm:hidden flex-1 min-h-0 overflow-y-auto">
                   {visible.length === 0 ? (
                     <div className="py-12 text-center text-sm text-muted-foreground">
                       No students match your search

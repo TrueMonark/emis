@@ -21,6 +21,7 @@
     "db:migrate:deploy": "npm run db:migrate:deploy -w @school/server",
     "db:migrate:status": "npm run db:migrate:status -w @school/server",
     "db:seed": "npm run db:seed -w @school/server",
+    "db:sync-catalogue": "npm run db:sync-catalogue -w @school/server",
     "db:studio": "npm run db:studio -w @school/server",
     "db:reset": "npm run db:reset -w @school/server",
     "app:restart": "node scripts/restart-app.cjs",

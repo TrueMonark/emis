@@ -73,6 +73,8 @@ export class TeacherProfileService {
                   select: {
                     name: true,
                     level: true,
+                    stage: true,
+                    exam: true,
                   },
                 },
               },
@@ -169,6 +171,8 @@ export class TeacherProfileService {
                   select: {
                     name: true,
                     level: true,
+                    stage: true,
+                    exam: true,
                   },
                 },
               },

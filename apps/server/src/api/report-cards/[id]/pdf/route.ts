@@ -45,7 +45,7 @@ export const GET = withAuth(
         grade: sub.grade ?? null,
       }));
       const bestOfSix = computeBestOfSixFromReportCard(
-        subjectsForBestSix, gradeLevel, gradeName, reportCard.class.name
+        subjectsForBestSix, gradeLevel, gradeName, reportCard.class.name, reportCard.class.grade?.stage
       );
 
       const pdfData = {
@@ -71,7 +71,9 @@ export const GET = withAuth(
         logoUrl: logoBase64 || undefined,
       };
 
-      const reportCardType = getReportCardType(reportCard.class.grade.level, gradeName, reportCard.class.name);
+      const reportCardType = getReportCardType(
+        reportCard.class.grade.level, gradeName, reportCard.class.name, reportCard.class.grade.stage
+      );
 
       const pdfComponent =
         reportCardType === 'JUNIOR'

@@ -26,7 +26,9 @@ import { getErrorMessage } from "@/lib/utils";
 interface GradeOption {
   id: string;
   name: string;
-  level: string;
+  level: string | null;
+  stage?: string;
+  schoolLevel?: string;
 }
 
 interface ClassOption {
@@ -98,11 +100,13 @@ export default function AdminReportsPage() {
     }
   };
 
-  // Convention filter only applies to Grade 8 and Grade 9 (ambiguous levels)
+  // Convention filter only applies to 2013-curriculum Grades 8–9 (junior secondary), where a
+  // school may have named some classes "F1-A" while the year level is still Grade 8.
   const selectedGradeData = grades.find((g) => g.id === selectedGrade);
   const showConventionFilter =
-    selectedGradeData?.level === "GRADE_8" ||
-    selectedGradeData?.level === "GRADE_9";
+    selectedGradeData?.stage === "JUNIOR_SECONDARY" ||
+    (!selectedGradeData?.stage &&
+      (selectedGradeData?.level === "GRADE_8" || selectedGradeData?.level === "GRADE_9"));
 
   const handleGradeChange = (gradeId: string) => {
     setSelectedGrade(gradeId);
@@ -121,9 +125,9 @@ export default function AdminReportsPage() {
       const gradesData = gradesResponse.data?.grades || [];
       if (gradesData.length > 0) {
         const secondaryGrades = gradesData.filter((g: any) =>
-          ["GRADE_8", "GRADE_9", "GRADE_10", "GRADE_11", "GRADE_12"].includes(
-            g.level
-          )
+          g.schoolLevel
+            ? g.schoolLevel === "SECONDARY"
+            : ["GRADE_8", "GRADE_9", "GRADE_10", "GRADE_11", "GRADE_12"].includes(g.level)
         );
         setGrades(secondaryGrades);
         if (secondaryGrades.length > 0) {

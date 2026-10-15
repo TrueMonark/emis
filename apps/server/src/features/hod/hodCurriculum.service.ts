@@ -2,15 +2,6 @@ import prisma from "@/lib/db/prisma";
 import { Prisma } from "@prisma/client";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/http/errors";
 import { getHODDepartment } from "@/lib/auth/position-helpers";
-import { GradeLevel } from "@school/shared/types/prisma-enums";
-
-const SECONDARY_GRADES: GradeLevel[] = [
-  GradeLevel.GRADE_8,
-  GradeLevel.GRADE_9,
-  GradeLevel.GRADE_10,
-  GradeLevel.GRADE_11,
-  GradeLevel.GRADE_12,
-];
 
 export interface DepartmentCurriculumFilters {
   classId?: string;
@@ -57,7 +48,7 @@ export class HODCurriculumService {
 
     const whereClause: Prisma.ClassSubjectWhereInput = {
       subject: { departmentId: hodDept.id, deletedAt: null },
-      class: { status: "ACTIVE", grade: { level: { in: SECONDARY_GRADES } } },
+      class: { status: "ACTIVE", grade: { schoolLevel: "SECONDARY" } },
     };
 
     if (classId) {
@@ -78,7 +69,7 @@ export class HODCurriculumService {
           select: {
             id: true,
             name: true,
-            grade: { select: { id: true, name: true, level: true, sequence: true } },
+            grade: { select: { id: true, name: true, level: true, sequence: true, stage: true, exam: true } },
           },
         },
         ...(includeAssignments && {
@@ -207,8 +198,8 @@ export class HODCurriculumService {
       throw new NotFoundError("Class not found");
     }
 
-    if (!SECONDARY_GRADES.includes(classEntity.grade.level)) {
-      throw new ForbiddenError("HOD can only manage curriculum for secondary grades (8-12)");
+    if (classEntity.grade.schoolLevel !== "SECONDARY") {
+      throw new ForbiddenError("HOD can only manage curriculum for secondary year levels");
     }
 
     const curriculumItems = await prisma.classSubject.findMany({

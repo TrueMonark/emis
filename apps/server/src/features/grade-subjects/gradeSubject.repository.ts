@@ -70,6 +70,8 @@ export class GradeSubjectRepository {
           select: {
             name: true,
             level: true,
+            stage: true,
+            exam: true,
           },
         },
         subject: {

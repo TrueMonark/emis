@@ -28,6 +28,11 @@ import { Class, ClassStatus } from "@school/shared/types/prisma-enums";
 import { useClasses } from "@/hooks/useClasses";
 import { Badge } from "@school/ui/components/badge";
 import { ManageClassTeacherDialog } from "@/components/classes/manage-class-teacher-dialog";
+import { RegisterCoverDialog } from "@/components/attendance/register-cover-dialog";
+import { ClassPathwayPanel } from "@/components/classes/class-pathway-panel";
+import { useAuth } from "@/hooks/useAuth";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
+import { UserRoundCheck } from "lucide-react";
 
 interface Student {
   id: string;
@@ -89,7 +94,10 @@ export function ClassSheet({
   const [classData, setClassData] = useState<ClassWithRelations | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [manageTeacherOpen, setManageTeacherOpen] = useState(false);
+  const [coverOpen, setCoverOpen] = useState(false);
   const { getClass } = useClasses();
+  const { user } = useAuth();
+  const canHandOverRegister = isSchoolLeader(user?.role);
 
   useEffect(() => {
     if (!open || !classId) {
@@ -186,7 +194,7 @@ export function ClassSheet({
             </SheetHeader>
 
             {/* Scrollable Content */}
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 min-h-0">
               <div className="p-6 space-y-4">
                 {/* About Section */}
                 <Collapsible
@@ -214,7 +222,7 @@ export function ClassSheet({
                         </div>
                         <div>
                           <label className="text-xs text-muted-foreground">
-                            Grade Level
+                            Year Level
                           </label>
                           <p className="text-sm font-medium mt-0.5">
                             {classData.grade?.name || "N/A"}
@@ -236,6 +244,13 @@ export function ClassSheet({
                             {classData.currentEnrolled} / {classData.capacity}
                           </p>
                         </div>
+                        {classId && (
+                          <ClassPathwayPanel
+                            classId={classId}
+                            stage={(classData.grade as { stage?: string } | undefined)?.stage}
+                            canEdit={canHandOverRegister}
+                          />
+                        )}
                       </div>
                     </div>
                   </CollapsibleContent>
@@ -286,6 +301,16 @@ export function ClassSheet({
                             <UserCog className="h-4 w-4 mr-2" />
                             Manage Class Teacher
                           </Button>
+                          {canHandOverRegister && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full mt-2"
+                              onClick={() => setCoverOpen(true)}>
+                              <UserRoundCheck className="h-4 w-4 mr-2" />
+                              Hand over register
+                            </Button>
+                          )}
                         </div>
                       ) : (
                         <div className="text-center py-4 pt-2">
@@ -442,6 +467,15 @@ export function ClassSheet({
           </>
         )}
       </SheetContent>
+
+      {classId && canHandOverRegister && (
+        <RegisterCoverDialog
+          open={coverOpen}
+          onOpenChange={setCoverOpen}
+          classId={classId}
+          className={classData.name}
+        />
+      )}
 
       {classId && (
         <ManageClassTeacherDialog

@@ -4,6 +4,7 @@ import { NotFoundError, BadRequestError } from "@/lib/http/errors";
 import { Role } from "@school/shared/types/prisma-enums";
 import { requireMinimumRole, AuthContext } from "@/lib/auth/authorization";
 import { resolveECZLevel, getGradeInfo, type GradeLevel } from "@school/shared/grading/ecz-grading-system";
+import { mergesPhysicsAndChemistry } from "@school/shared/curriculum/year-levels";
 import { formatTeacherLabel } from "@school/shared/format";
 import { ECZGrade } from "@school/shared/types/prisma-enums";
 import {
@@ -173,7 +174,7 @@ export class GradePerformanceReportService {
 
     const grade = await prisma.grade.findUnique({
       where: { id: gradeId },
-      select: { id: true, name: true, level: true },
+      select: { id: true, name: true, level: true, stage: true, exam: true },
     });
     if (!grade) throw new NotFoundError("Grade not found");
 
@@ -193,7 +194,7 @@ export class GradePerformanceReportService {
       select: { id: true, name: true },
     });
     const classIds = classes.map((c) => c.id);
-    const gradeLevel = resolveECZLevel(grade.level, grade.name, classes[0]?.name);
+    const gradeLevel = resolveECZLevel(grade.level, grade.name, classes[0]?.name, grade.stage);
 
     logger.info("Generating grade performance report", {
       gradeId,
@@ -264,7 +265,7 @@ export class GradePerformanceReportService {
       let studentSat = false;
 
       const effectiveSubjects: MergeableReportCardSubject[] =
-        grade.level === "GRADE_12" ? applyScienceMerge(report.subjects) : report.subjects;
+        mergesPhysicsAndChemistry(grade) ? applyScienceMerge(report.subjects) : report.subjects;
 
       for (const rcs of effectiveSubjects) {
         let agg = subjectAggs.get(rcs.subjectId);

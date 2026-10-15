@@ -1,12 +1,12 @@
 import prisma from "@/lib/db/prisma";
 import { Prisma } from "@prisma/client";
-import { Grade, GradeLevel, SchoolLevel } from "@school/shared/types/prisma-enums";
+import { Grade, SchoolLevel } from "@school/shared/types/prisma-enums";
 
 /**
- * Grade Repository - Data Access Layer
+ * Grade (year level) Repository - Data Access Layer
  *
- * Manages grade levels (Grade 1-12, Forms 1-5).
- * Handles grade progression, school level filtering, and subject assignments.
+ * Each school's own year levels ("Grade 8", "Form 1", "Reception"…). Row-level security keeps
+ * every query to the current school. Progression follows nextGradeId, not sequence + 1.
  */
 export class GradeRepository {
   /**
@@ -18,23 +18,11 @@ export class GradeRepository {
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === "P2002") {
-          throw new Error("Grade level already exists");
+          throw new Error("A year level with that name or position already exists");
         }
       }
       throw error;
     }
-  }
-
-  /**
-   * Idempotently create a grade level for a level that doesn't exist yet
-   * (no-op update on conflict). Used by the default-grades seeding utility.
-   */
-  async upsertByLevel(data: Prisma.GradeCreateInput): Promise<Grade> {
-    return prisma.grade.upsert({
-      where: { level: data.level },
-      update: {},
-      create: data,
-    });
   }
 
   /**
@@ -87,15 +75,6 @@ export class GradeRepository {
   }
 
   /**
-   * Find grade by level (e.g., GRADE_1, GRADE_8)
-   */
-  async findByLevel(level: GradeLevel): Promise<Grade | null> {
-    return prisma.grade.findUnique({
-      where: { level },
-    });
-  }
-
-  /**
    * Find grades by school level (PRIMARY or SECONDARY)
    */
   async findBySchoolLevel(schoolLevel: SchoolLevel): Promise<Grade[]> {
@@ -116,6 +95,8 @@ export class GradeRepository {
           select: {
             id: true,
             level: true,
+            stage: true,
+            exam: true,
             name: true,
             sequence: true,
           },
@@ -124,6 +105,8 @@ export class GradeRepository {
           select: {
             id: true,
             level: true,
+            stage: true,
+            exam: true,
             name: true,
             sequence: true,
           },
@@ -205,28 +188,20 @@ export class GradeRepository {
     }
   }
 
-  /**
-   * Check if grade exists by level
-   */
-  async existsByLevel(level: GradeLevel): Promise<boolean> {
-    const count = await prisma.grade.count({
-      where: { level },
-    });
-    return count > 0;
+  /** Find a year level at this school by its name ("Form 1") */
+  async findByName(name: string): Promise<Grade | null> {
+    return prisma.grade.findFirst({ where: { name } });
   }
 
   /**
-   * Get next grade in sequence
+   * The level learners normally move to (nextGradeId — e.g. Grade 12 → Form 5)
    */
   async getNextGrade(currentGradeId: string): Promise<Grade | null> {
-    const currentGrade = await this.findById(currentGradeId);
-    if (!currentGrade) return null;
-
-    return prisma.grade.findFirst({
-      where: {
-        sequence: currentGrade.sequence + 1,
-      },
+    const currentGrade = await prisma.grade.findUnique({
+      where: { id: currentGradeId },
+      include: { nextGrade: true },
     });
+    return currentGrade?.nextGrade ?? null;
   }
 
   /**

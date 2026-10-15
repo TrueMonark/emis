@@ -6,6 +6,7 @@
  */
 
 import { GradeLevel as PrismaGradeLevel } from "@prisma/client";
+import { gradingScaleFor, reportCardTypeFor, type YearStage } from "../curriculum/year-levels";
 import { ECZGrade } from "../types/prisma-enums";
 
 export type GradeLevel = "PRIMARY" | "JUNIOR" | "SENIOR";
@@ -323,25 +324,13 @@ export function formatGrade(grade: ECZGrade, gradeLevel: GradeLevel = "SENIOR"):
  * name is available.
  */
 export function resolveECZLevel(
-  gradeLevel: PrismaGradeLevel,
+  gradeLevel: PrismaGradeLevel | null | undefined,
   gradeName?: string | null,
-  className?: string | null
+  className?: string | null,
+  /** Phase 3b: the year level's stage. When given it decides; the rest is the fallback. */
+  stage?: YearStage | string | null
 ): GradeLevel {
-  if (isFormNamed(gradeName) || isFormNamed(className)) {
-    return "SENIOR";
-  }
-  return mapPrismaGradeLevelToECZLevel(gradeLevel);
-}
-
-/**
- * True for the "Form" naming convention — "Form 1".."Form 9", or the short
- * "F1-A" / "F2 Blue" style. Checked against both the grade name and the
- * class name by callers, since a school's Grade 8/9 records can carry
- * Form-prefixed class names while the Grade record itself is still called
- * "Grade 8"/"Grade 9".
- */
-function isFormNamed(name?: string | null): boolean {
-  return !!name && /\bForm\s*[1-9]\b|^F[1-9][\s\-]/i.test(name.trim());
+  return gradingScaleFor({ level: gradeLevel, name: gradeName, stage }, className);
 }
 
 /**
@@ -350,7 +339,7 @@ function isFormNamed(name?: string | null): boolean {
  *
  * Prisma GradeLevel (GRADE_1 to GRADE_12) -> ECZ GradeLevel (PRIMARY/JUNIOR/SENIOR)
  */
-export function mapPrismaGradeLevelToECZLevel(prismaLevel: PrismaGradeLevel): GradeLevel {
+export function mapPrismaGradeLevelToECZLevel(prismaLevel: PrismaGradeLevel | null | undefined): GradeLevel {
   switch (prismaLevel) {
     case "GRADE_5":
     case "GRADE_6":
@@ -396,14 +385,13 @@ export function mapPrismaGradeLevelToECZLevel(prismaLevel: PrismaGradeLevel): Gr
  * className are checked for the Form prefix, not just one.
  */
 export function resolveReportCardLevel(
-  gradeLevel: PrismaGradeLevel | string,
+  gradeLevel: PrismaGradeLevel | string | null | undefined,
   gradeName?: string | null,
-  className?: string | null
+  className?: string | null,
+  /** Phase 3b: the year level's stage. When given it decides; the rest is the fallback. */
+  stage?: YearStage | string | null
 ): "JUNIOR" | "SENIOR" {
-  if (isFormNamed(gradeName) || isFormNamed(className)) return "SENIOR";
-
-  if (gradeLevel === "GRADE_8" || gradeLevel === "GRADE_9") return "JUNIOR";
-  return "SENIOR";
+  return reportCardTypeFor({ level: gradeLevel, name: gradeName, stage }, className);
 }
 
 /**

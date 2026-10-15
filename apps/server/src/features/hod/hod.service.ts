@@ -421,6 +421,8 @@ export class HodService {
             id: true,
             name: true,
             level: true,
+            stage: true,
+            exam: true,
             schoolLevel: true,
             sequence: true,
           },

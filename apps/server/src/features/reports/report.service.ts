@@ -1,6 +1,7 @@
 import { reportRepository } from "./report.repository";
 import { NotFoundError, ForbiddenError } from "@/lib/http/errors";
-import { GradeLevel, Role } from "@school/shared/types/prisma-enums";
+import { Role } from "@school/shared/types/prisma-enums";
+import { mergesPhysicsAndChemistry } from "@school/shared/curriculum/year-levels";
 import { requireMinimumRole, AuthContext } from "@/lib/auth/authorization";
 import {
   isPhysicsSubjectName,
@@ -9,13 +10,6 @@ import {
   COMBINED_SCIENCE_SUBJECT_ID,
 } from "@/lib/grading/combined-science";
 
-const HOD_GRADE_LEVELS: GradeLevel[] = [
-  GradeLevel.GRADE_8,
-  GradeLevel.GRADE_9,
-  GradeLevel.GRADE_10,
-  GradeLevel.GRADE_11,
-  GradeLevel.GRADE_12,
-];
 const PASS_MARK = 50;
 
 /**
@@ -72,7 +66,7 @@ export class ReportService {
   }
 
   async getSecondaryGrades() {
-    return reportRepository.findGradesByLevels(HOD_GRADE_LEVELS);
+    return reportRepository.findSecondaryGrades();
   }
 
   async getAllSubjects() {
@@ -99,7 +93,7 @@ export class ReportService {
     const hasPhysics = subjects.some((s) => isPhysicsSubjectName(s.name));
     const hasChemistry = subjects.some((s) => isChemistrySubjectName(s.name));
 
-    if (grade?.level === "GRADE_12" && hasPhysics && hasChemistry) {
+    if (grade && mergesPhysicsAndChemistry(grade) && hasPhysics && hasChemistry) {
       return [
         ...subjects,
         { id: COMBINED_SCIENCE_SUBJECT_ID, name: COMBINED_SCIENCE_LABEL, code: "SCI" },

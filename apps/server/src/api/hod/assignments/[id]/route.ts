@@ -37,17 +37,10 @@ export const GET = withHODAccess(
         );
       }
 
-      // Validate assignment is for secondary grade
-      const SECONDARY_GRADES = [
-        "GRADE_8",
-        "GRADE_9",
-        "GRADE_10",
-        "GRADE_11",
-        "GRADE_12",
-      ];
-      if (!SECONDARY_GRADES.includes(assignment.class.grade.level)) {
+      // Validate assignment is for a secondary year level
+      if (assignment.class.grade.schoolLevel !== "SECONDARY") {
         return ApiResponse.forbidden(
-          "HOD can only view assignments for secondary grades (8-12)"
+          "HOD can only view assignments for secondary year levels"
         );
       }
 

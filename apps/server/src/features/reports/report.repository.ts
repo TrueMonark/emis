@@ -1,5 +1,5 @@
 import prisma from "@/lib/db/prisma";
-import { GradeLevel, TermType } from "@school/shared/types/prisma-enums";
+import { TermType } from "@school/shared/types/prisma-enums";
 
 /**
  * Report Repository - Data Access Layer
@@ -40,7 +40,7 @@ export class ReportRepository {
 
   async findAllGrades() {
     return prisma.grade.findMany({
-      select: { id: true, name: true, level: true, sequence: true },
+      select: { id: true, name: true, level: true, sequence: true, stage: true, exam: true, schoolLevel: true },
       orderBy: { sequence: "asc" },
     });
   }
@@ -48,14 +48,15 @@ export class ReportRepository {
   async findGradeById(gradeId: string) {
     return prisma.grade.findUnique({
       where: { id: gradeId },
-      select: { id: true, level: true, name: true },
+      select: { id: true, level: true, name: true, stage: true, exam: true },
     });
   }
 
-  async findGradesByLevels(levels: GradeLevel[]) {
+  /** Secondary year levels (Grade 8 up, Forms) of this school */
+  async findSecondaryGrades() {
     return prisma.grade.findMany({
-      where: { level: { in: levels } },
-      select: { id: true, name: true, level: true, sequence: true },
+      where: { schoolLevel: "SECONDARY" },
+      select: { id: true, name: true, level: true, sequence: true, stage: true, exam: true, schoolLevel: true },
       orderBy: { sequence: "asc" },
     });
   }

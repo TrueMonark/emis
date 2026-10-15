@@ -96,6 +96,8 @@ export class AdminSubjectAnalysisService {
       select: {
         id: true,
         level: true,
+        stage: true,
+        exam: true,
         name: true,
       },
     });
@@ -162,7 +164,7 @@ export class AdminSubjectAnalysisService {
     } else {
       // No convention selected — fall back to name-based detection
       const formClass = allClasses.find((c) => isFormName(c.name));
-      gradeLevel = resolveECZLevel(grade.level, grade.name, formClass?.name);
+      gradeLevel = resolveECZLevel(grade.level, grade.name, formClass?.name, grade.stage);
     }
 
     // Not every class in a grade necessarily offers every subject (e.g. one
@@ -467,7 +469,7 @@ export class AdminSubjectAnalysisService {
 
     const grade = await prisma.grade.findUnique({
       where: { id: gradeId },
-      select: { id: true, level: true, name: true },
+      select: { id: true, level: true, name: true, stage: true },
     });
     if (!grade) throw new NotFoundError("Grade not found");
 
@@ -505,7 +507,7 @@ export class AdminSubjectAnalysisService {
       gradeLevel = "SENIOR";
     } else {
       const formClass = allClasses.find((c) => isFormName(c.name));
-      gradeLevel = resolveECZLevel(grade.level, grade.name, formClass?.name);
+      gradeLevel = resolveECZLevel(grade.level, grade.name, formClass?.name, grade.stage);
     }
 
     // Classes offering EITHER Physics or Chemistry — a class offering only

@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { PromotionStatus, GradeLevel } from "@school/shared/types/prisma-enums";
+import { PromotionStatus } from "@school/shared/types/prisma-enums";
+import { useGrades } from "@/hooks/useGrades";
 
 import {
   Dialog,
@@ -40,7 +41,8 @@ const editReportCardSchema = z.object({
   classTeacherRemarks: z.string().optional(),
   headTeacherRemarks: z.string().optional(),
   promotionStatus: z.nativeEnum(PromotionStatus).optional(),
-  nextGrade: z.nativeEnum(GradeLevel).optional(),
+  // Phase 3b: the school's own year level name ("Form 2"), not an old grade number
+  nextGradeName: z.string().optional(),
 });
 
 type EditReportCardFormValues = z.infer<typeof editReportCardSchema>;
@@ -62,6 +64,7 @@ export function EditReportCardDialog({
   const { getReportCard, updateReportCard } = useReportCards();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { grades: yearLevels } = useGrades({ all: true });
 
   const form = useForm<EditReportCardFormValues>({
     resolver: zodResolver(editReportCardSchema),
@@ -69,7 +72,7 @@ export function EditReportCardDialog({
       classTeacherRemarks: "",
       headTeacherRemarks: "",
       promotionStatus: undefined,
-      nextGrade: undefined,
+      nextGradeName: undefined,
     },
   });
 
@@ -87,7 +90,9 @@ export function EditReportCardDialog({
           classTeacherRemarks: data.classTeacherRemarks || "",
           headTeacherRemarks: data.headTeacherRemarks || "",
           promotionStatus: data.promotionStatus || undefined,
-          nextGrade: data.nextGrade || undefined,
+          nextGradeName:
+            data.nextGradeName ||
+            (data.nextGrade ? String(data.nextGrade).replace("GRADE_", "Grade ") : undefined),
         });
       } catch (error) {
         toast({
@@ -117,7 +122,7 @@ export function EditReportCardDialog({
         classTeacherRemarks: data.classTeacherRemarks || undefined,
         headTeacherRemarks: data.headTeacherRemarks || undefined,
         promotionStatus: data.promotionStatus || undefined,
-        nextGrade: data.nextGrade || undefined,
+        nextGradeName: data.nextGradeName || null,
       });
 
       toast({
@@ -239,10 +244,10 @@ export function EditReportCardDialog({
 
               <FormField
                 control={form.control}
-                name="nextGrade"
+                name="nextGradeName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Next Grade (if promoted)</FormLabel>
+                    <FormLabel>Next year level (if promoted)</FormLabel>
                     <Select
                       disabled={isSubmitting}
                       onValueChange={field.onChange}
@@ -250,19 +255,19 @@ export function EditReportCardDialog({
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select next grade" />
+                          <SelectValue placeholder="Select next year level" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {Object.values(GradeLevel).map((grade) => (
-                          <SelectItem key={grade} value={grade}>
-                            {grade.replace("GRADE_", "Grade ")}
+                        {yearLevels.map((g) => (
+                          <SelectItem key={g.id} value={g.name}>
+                            {g.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      The grade level the student will advance to if promoted
+                      The year level the learner moves to if promoted
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

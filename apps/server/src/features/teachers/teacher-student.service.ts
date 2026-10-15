@@ -1,6 +1,7 @@
 import prisma from "@/lib/db/prisma";
 import { NotFoundError, ForbiddenError } from "@/lib/http/errors";
 import { logger } from "@/lib/logger/logger";
+import { registerCoverService } from "@/features/attendance/registerCover.service";
 import {
   StudentView,
   ClassView,
@@ -126,6 +127,7 @@ export class TeacherStudentService {
       name: classTeacherAssignment.class.name,
       grade: classTeacherAssignment.class.grade.name,
       gradeLevel: classTeacherAssignment.class.grade.level,
+      stage: classTeacherAssignment.class.grade.stage,
       capacity: classTeacherAssignment.class.capacity,
       enrolled: classTeacherAssignment.class.enrollments.length,
     };
@@ -203,6 +205,7 @@ export class TeacherStudentService {
         name: assignment.class.name,
         grade: assignment.class.grade.name,
         gradeLevel: assignment.class.grade.level,
+        stage: assignment.class.grade.stage,
         subject: assignment.subject.name,
         subjectCode: assignment.subject.code,
         subjectId: assignment.subject.id,
@@ -306,6 +309,12 @@ export class TeacherStudentService {
 
     if (subjectTeacherAssignment) {
       logger.debug("Teacher has subject teacher access", { teacherId: teacher.id, classId });
+      return true;
+    }
+
+    // Covering the class register today (class teacher away)
+    if (await registerCoverService.isCovering(teacher.id, classId, new Date())) {
+      logger.debug("Teacher has register cover access", { teacherId: teacher.id, classId });
       return true;
     }
 

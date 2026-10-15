@@ -71,6 +71,8 @@ interface TimetableConfiguration {
   periodsAfterBreak: number;
   totalPeriods: number;
   doublePeriodConfigs?: DoublePeriodConfig[];
+  /** Period length per stage where it differs, e.g. { LOWER_PRIMARY: 30 } */
+  stagePeriodDurations?: Record<string, number> | null;
   lastGeneratedAt?: string;
   generatedBy?: string;
 }
@@ -123,6 +125,9 @@ export default function TimetableGeneratePage() {
     periodsBeforeBreak: 4,
     periodsAfterBreak: 4,
   });
+  // Lower primary (Grades 1–3) periods are 30 minutes in the 2023 curriculum; empty = same as
+  // everyone else.
+  const [lowerPrimaryMinutes, setLowerPrimaryMinutes] = useState<string>("");
 
   // ── Generation state ─────────────────────────────────────────────────────
   const [generating, setGenerating] = useState(false);
@@ -151,6 +156,8 @@ export default function TimetableGeneratePage() {
           periodsBeforeBreak: data.configuration.periodsBeforeBreak,
           periodsAfterBreak: data.configuration.periodsAfterBreak,
         });
+        const lp = data.configuration.stagePeriodDurations?.LOWER_PRIMARY;
+        setLowerPrimaryMinutes(lp ? String(lp) : "");
 
         if (data.configuration.doublePeriodConfigs) {
           setDoublePeriodConfigs(data.configuration.doublePeriodConfigs);
@@ -206,6 +213,9 @@ export default function TimetableGeneratePage() {
           breakStartPeriod: formData.periodsBeforeBreak,
           totalPeriods: formData.periodsBeforeBreak + formData.periodsAfterBreak,
           doublePeriodConfigs,
+          stagePeriodDurations: lowerPrimaryMinutes
+            ? { LOWER_PRIMARY: parseInt(lowerPrimaryMinutes, 10) }
+            : null,
         }),
       });
 
@@ -382,6 +392,23 @@ export default function TimetableGeneratePage() {
                       required
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lowerPrimaryMinutes">Lower primary period length (minutes)</Label>
+                  <Input
+                    id="lowerPrimaryMinutes"
+                    type="number"
+                    min="20"
+                    max="90"
+                    placeholder={`Same as above (${formData.periodDuration})`}
+                    value={lowerPrimaryMinutes}
+                    onChange={(e) => setLowerPrimaryMinutes(e.target.value.replace(/\D/g, ""))}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    For year levels at the lower primary stage (Grades 1–3: 30 minutes in the 2023
+                    curriculum). Their bell times follow this length; the number of periods stays the same.
+                  </p>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">

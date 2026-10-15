@@ -78,7 +78,8 @@ export class StudentPromotionService {
     const eczLevel = resolveECZLevel(
       sourceClass.grade.level,
       sourceClass.grade.name,
-      sourceClass.name
+      sourceClass.name,
+      sourceClass.grade.stage
     );
     const subjectPassMark = await academicPolicyService.getSubjectPassMark(eczLevel);
     const isPrimary = eczLevel === "PRIMARY";
@@ -225,7 +226,12 @@ export class StudentPromotionService {
       );
     }
 
-    const fromGradeLevel = sourceClass.grade.level;
+    // Old grade numbers only exist for 2013-curriculum grades; the names and ids always do.
+    const fromGrade = {
+      fromGradeLevel: sourceClass.grade.level,
+      fromGradeId: sourceClass.grade.id,
+      fromGradeName: sourceClass.grade.name,
+    };
 
     const successful: string[] = [];
     const failed: Array<{ studentId: string; error: string }> = [];
@@ -243,7 +249,7 @@ export class StudentPromotionService {
           await studentRepository.update(entry.studentId, { status: "GRADUATED" });
           await studentPromotionRepository.create({
             student: { connect: { id: entry.studentId } },
-            fromGradeLevel,
+            ...fromGrade,
             toGradeLevel: null,
             academicYear: targetAcademicYear.year,
             status: "GRADUATED",
@@ -282,8 +288,10 @@ export class StudentPromotionService {
 
         await studentPromotionRepository.create({
           student: { connect: { id: entry.studentId } },
-          fromGradeLevel,
+          ...fromGrade,
           toGradeLevel: targetClass.grade.level,
+          toGradeId: targetClass.grade.id,
+          toGradeName: targetClass.grade.name,
           academicYear: targetAcademicYear.year,
           status: entry.action === "REPEAT" ? "REPEATED" : "PROMOTED",
           remarks: input.remarks,

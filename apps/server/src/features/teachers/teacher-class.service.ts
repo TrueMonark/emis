@@ -2,7 +2,8 @@ import prisma from "@/lib/db/prisma";
 import { NotFoundError, ForbiddenError } from "@/lib/http/errors";
 import { logger } from "@/lib/logger/logger";
 import { formatCompactClassLabel } from "@school/shared/format";
-import { TeacherClassView, TeacherClassesResponse } from "./teacher-app.types";
+import { TeacherClassView, TeacherClassesResponse, RegisterCoverClassView } from "./teacher-app.types";
+import { registerCoverService } from "@/features/attendance/registerCover.service";
 
 export interface ClassListExportData {
   className: string;
@@ -60,6 +61,7 @@ export class TeacherClassService {
         classTeacherClasses: [],
         subjectTeacherClasses: [],
         allClasses: [],
+        registerCoverClasses: [],
       };
     }
 
@@ -73,6 +75,7 @@ export class TeacherClassService {
       where: {
         teacherId: teacherProfile.id,
         academicYearId: academicYear.id,
+        endedAt: null,
       },
       include: {
         class: {
@@ -170,11 +173,51 @@ export class TeacherClassService {
       totalUniqueClasses: allClasses.length,
     });
 
+    const registerCoverClasses = await this.getRegisterCoverClasses(teacherProfile.id, academicYear.id);
+
     return {
       classTeacherClasses,
       subjectTeacherClasses,
       allClasses,
+      registerCoverClasses,
     };
+  }
+
+  /** Classes this teacher is covering the morning register for (today or later). */
+  private async getRegisterCoverClasses(
+    teacherProfileId: string,
+    academicYearId: string
+  ): Promise<RegisterCoverClassView[]> {
+    const covers = await registerCoverService.coversForTeacher(teacherProfileId);
+    return Promise.all(
+      covers.map(async (cover) => {
+        const [totalStudents, classTeacher] = await Promise.all([
+          prisma.studentClassEnrollment.count({
+            where: { classId: cover.classId, academicYearId },
+          }),
+          prisma.classTeacherAssignment.findFirst({
+            where: { classId: cover.classId, academicYearId, endedAt: null },
+            select: { teacher: { select: { firstName: true, lastName: true } } },
+          }),
+        ]);
+        return {
+          id: cover.classId,
+          name: formatCompactClassLabel(cover.class.grade.name, cover.class.name),
+          gradeLevel: cover.class.grade.name,
+          totalStudents,
+          capacity: cover.class.capacity,
+          isClassTeacher: false,
+          teachingSubject: "Register cover",
+          status: cover.class.status,
+          coverId: cover.id,
+          coverStartDate: cover.startDate.toISOString(),
+          coverEndDate: cover.endDate.toISOString(),
+          classTeacherName: classTeacher
+            ? `${classTeacher.teacher.firstName} ${classTeacher.teacher.lastName}`
+            : null,
+        };
+      })
+    );
   }
 
   /**

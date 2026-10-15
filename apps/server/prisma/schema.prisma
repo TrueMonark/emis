@@ -64,22 +64,106 @@ model Term {
   @@map("terms")
 }
 
+/// A year level at one school ("Grade 8", "Form 1", "Reception", "Level 2", "16+").
+/// Phase 3b: each school has its own list, so Grade 9 and Form 1 can run side by side during
+/// the Grade → Form changeover. The model keeps its old name (Grade) to avoid renaming it
+/// across the code; screens call it "year level".
 model Grade {
   id                        String                     @id @default(cuid())
-  level                     GradeLevel                 @unique
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId                  String                     @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school                    School                     @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  /// Old fixed grade number (GRADE_1 … GRADE_12). Only for 2013-curriculum grades; empty for
+  /// Forms, ECE and LSEND levels. Don't use it for rules — use stage, curriculum and exam.
+  level                     GradeLevel?
   name                      String
+  /// Short label for tight spaces: "G8", "F1", "REC"
+  shortName                 String?
+  /// Kept in step with stage (PRIMARY for ECE and primary stages, otherwise SECONDARY)
   schoolLevel               SchoolLevel
-  sequence                  Int                        @unique
-  nextGradeId               String?                    @unique
+  stage                     YearStage
+  curriculum                Curriculum                 @default(LEGACY_2013)
+  /// National exam taken at the end of this level, if any
+  exam                      NationalExam               @default(NONE)
+  /// Order within the school (1 = first)
+  sequence                  Int
+  /// Where learners normally go next. Not "sequence + 1": Grade 7 → Form 1, Grade 12 → Form 5.
+  nextGradeId               String?
   createdAt                 DateTime                   @default(now())
   updatedAt                 DateTime                   @updatedAt
   classes                   Class[]
   subjects                  GradeSubject[]
-  nextGrade                 Grade?                     @relation("GradeProgression", fields: [nextGradeId], references: [id])
-  previousGrades            Grade?                     @relation("GradeProgression")
+  nextGrade                 Grade?                     @relation("GradeProgression", fields: [nextGradeId], references: [id], onDelete: SetNull)
+  previousGrades            Grade[]                    @relation("GradeProgression")
   subjectPeriodRequirements SubjectPeriodRequirement[]
 
+  @@unique([schoolId, sequence])
+  @@unique([schoolId, name])
+  @@index([schoolId])
+  @@index([nextGradeId])
   @@map("grades")
+}
+
+/// National subject catalogue (2023 Curriculum Framework). One list for the whole country;
+/// each school picks what it offers (a school Subject linked to a catalogue entry) and can add
+/// local subjects of its own.
+model CatalogueSubject {
+  id               String        @id @default(cuid())
+  /// Stable code, e.g. "ENG", "MATH", "CIVIC"
+  code             String        @unique
+  name             String
+  /// Framework subject group, e.g. "Language and Literature"
+  groupName        String
+  /// O-level group number (1–9) when the framework gives one
+  groupNumber      Int?
+  /// Stages the subject is taught at
+  stages           YearStage[]
+  /// Default periods per week by stage, e.g. {"O_LEVEL": 6, "A_LEVEL": 6}
+  periodsPerWeek   Json?
+  /// Compulsory for every learner at O-level (English, Mathematics, Civic Education)
+  compulsoryOLevel Boolean       @default(false)
+  sortOrder        Int           @default(0)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  schoolSubjects   Subject[]
+
+  @@map("catalogue_subjects")
+}
+
+/// National list of O-level and A-level pathways with their subject rules (as data, see
+/// packages/shared/src/curriculum/pathways.ts for the rule shape).
+model Pathway {
+  id             String          @id @default(cuid())
+  code           String          @unique
+  name           String
+  stage          YearStage
+  /// Subject rules: compulsory codes, "choose N from" groups, min/max subjects, notes
+  rules          Json
+  sortOrder      Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  schoolPathways SchoolPathway[]
+  classes        Class[]
+  enrollments    StudentClassEnrollment[]
+
+  @@map("pathways")
+}
+
+/// Which pathways a school offers (depends on its staff, rooms and equipment).
+model SchoolPathway {
+  id        String   @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId  String   @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  pathwayId String
+  pathway   Pathway  @relation(fields: [pathwayId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+
+  @@unique([schoolId, pathwayId])
+  @@index([schoolId])
+  @@map("school_pathways")
 }
 
 model Class {
@@ -100,8 +184,12 @@ model Class {
   attendanceRecords         AttendanceRecord[]         @relation("ClassAttendance")
   classSubjects             ClassSubject[]
   classTeacherAssignments   ClassTeacherAssignment[]
+  registerCovers            RegisterCover[]
   classTimetables           ClassTimetable[]
   grade                     Grade                      @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  /// Optional: the pathway this class follows (O-level and A-level classes)
+  pathwayId                 String?
+  pathway                   Pathway?                   @relation(fields: [pathwayId], references: [id], onDelete: SetNull)
   reportCards               ReportCard[]
   secondaryTimetables       SecondaryTimetable[]
   enrollments               StudentClassEnrollment[]
@@ -126,6 +214,9 @@ model Subject {
   createdAt                 DateTime                   @default(now())
   updatedAt                 DateTime                   @updatedAt
   departmentId              String?
+  /// The national catalogue entry this subject offers; empty for a school's own local subject
+  catalogueSubjectId        String?
+  catalogueSubject          CatalogueSubject?          @relation(fields: [catalogueSubjectId], references: [id], onDelete: SetNull)
   deletedAt                 DateTime?
   assessments               Assessment[]
   classSubjects             ClassSubject[]
@@ -142,6 +233,7 @@ model Subject {
   @@unique([schoolId, code])
   @@index([departmentId])
   @@index([schoolId])
+  @@index([catalogueSubjectId])
   @@map("subjects")
 }
 
@@ -193,7 +285,12 @@ model Student {
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
   school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  /// The school's own admission number
   studentNumber      String
+  /// System-wide learner number, e.g. ZM26-4K7Q2PB-X (year of first registration, 7
+  /// characters, check character). Unique nationally, never reused, follows the learner.
+  /// Filled in by the database (emis_new_learner_number()) when a learner is created.
+  learnerNumber      String                    @unique @default(dbgenerated("emis_new_learner_number()"))
   firstName          String
   middleName         String?
   lastName           String
@@ -287,6 +384,9 @@ model StudentClassEnrollment {
   previousClassId String?
   changeReason    String?
   changedAt       DateTime?
+  /// The learner's pathway this year (O-level / A-level); defaults to the class's pathway
+  pathwayId       String?
+  pathway         Pathway?         @relation(fields: [pathwayId], references: [id], onDelete: SetNull)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   academicYear    AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
@@ -307,8 +407,15 @@ model StudentPromotion {
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
   school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   studentId      String
-  fromGradeLevel GradeLevel
+  /// Old grade numbers, kept for records made before Phase 3b; empty for Forms etc.
+  fromGradeLevel GradeLevel?
   toGradeLevel   GradeLevel?
+  /// Year levels at the school (Phase 3b onwards)
+  fromGradeId    String?
+  toGradeId      String?
+  /// Names at the time of the promotion, so the record still reads right if a level is renamed
+  fromGradeName  String?
+  toGradeName    String?
   academicYear   Int
   status         PromotionStatus
   remarks        String?
@@ -381,6 +488,7 @@ model TeacherProfile {
   timetableSlots            TimetableSlot[]
   permissionGrants          UserPermission[]           @relation("PermissionGrants")
   lessonLogs                LessonLog[]
+  registerCovers            RegisterCover[]            @relation("RegisterCoverTeacher")
 
   @@index([staffNumber])
   @@index([status])
@@ -489,6 +597,9 @@ model School {
   reportCards                ReportCard[]
   reportCardSubjects         ReportCardSubject[]
   attendanceRecords          AttendanceRecord[]
+  registerCovers             RegisterCover[]
+  grades                     Grade[]
+  schoolPathways             SchoolPathway[]
   userPermissions            UserPermission[]
   settings                   SystemSettings[]
   smsLogs                    SMSLog[]
@@ -659,7 +770,10 @@ model TimetableConfiguration {
   academicYearId          String          @unique
   termId                  String?
   schoolStartTime         String
+  /// Default period length in minutes
   periodDuration          Int
+  /// Period length per stage where it differs, e.g. {"LOWER_PRIMARY": 30}
+  stagePeriodDurations    Json?
   breakStartPeriod        Int
   breakDuration           Int
   periodsBeforeBreak      Int
@@ -958,6 +1072,8 @@ model ReportCard {
   headTeacherRemarks  String?
   promotionStatus     PromotionStatus?
   nextGrade           GradeLevel?
+  /// Name of the year level the learner moves to (Phase 3b; works for Forms too)
+  nextGradeName       String?
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
   subjects            ReportCardSubject[]
@@ -1035,6 +1151,37 @@ model AttendanceRecord {
   @@index([timetableSlotId])
   @@index([schoolId])
   @@map("attendance_records")
+}
+
+
+/// The class teacher's morning register handed to another teacher for a few days (e.g. the class
+/// teacher is away). Created by the class teacher or a school leader; the covering teacher can take
+/// the daily register for that class on those dates only.
+model RegisterCover {
+  id          String         @id @default(cuid())
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId    String         @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school      School         @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  classId     String
+  class       Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  /// The teacher who takes the register while covering
+  teacherId   String
+  teacher     TeacherProfile @relation("RegisterCoverTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  /// First and last day of the cover (UTC midnight, like attendance dates)
+  startDate   DateTime
+  endDate     DateTime
+  reason      String?
+  /// User who arranged the cover
+  createdById String
+  cancelledAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([schoolId])
+  @@index([classId, startDate, endDate])
+  @@index([teacherId, startDate, endDate])
+  @@map("register_covers")
 }
 
 model RolePermission {
@@ -1211,6 +1358,35 @@ enum GradeLevel {
 enum SchoolLevel {
   PRIMARY
   SECONDARY
+}
+
+/// Stages of the education system (2023 Curriculum Framework, plus the 2013 junior secondary
+/// stage for Grades 8–9 while it runs out)
+enum YearStage {
+  ECE
+  LOWER_PRIMARY
+  UPPER_PRIMARY
+  JUNIOR_SECONDARY
+  O_LEVEL
+  A_LEVEL
+  LSEND
+  YALE
+}
+
+enum Curriculum {
+  LEGACY_2013
+  CBC_2023
+}
+
+/// National exam at the end of a year level
+enum NationalExam {
+  NONE
+  PSLE_LEGACY
+  PSLE_2023
+  JSSL
+  SC_O_LEGACY
+  SC_O_2023
+  SC_A
 }
 
 enum ClassStatus {

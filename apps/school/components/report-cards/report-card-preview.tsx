@@ -84,7 +84,8 @@ export function ReportCardPreview({ reportCard, schoolName, logoUrl }: ReportCar
     grade: sub.grade ?? null,
   }));
   const gradeLevel = reportCard.class?.grade?.level || "";
-  const bestOfSix = computeBestOfSixFromReportCard(subjectsForBestSix, gradeLevel, gradeName, className);
+  const gradeStage = (reportCard.class?.grade as { stage?: string | null } | undefined)?.stage ?? null;
+  const bestOfSix = computeBestOfSixFromReportCard(subjectsForBestSix, gradeLevel, gradeName, className, gradeStage);
 
   // Build attendance
   const attendance = formatAttendanceLabel(reportCard);
@@ -123,7 +124,7 @@ export function ReportCardPreview({ reportCard, schoolName, logoUrl }: ReportCar
       logoUrl,
     };
 
-    return resolveReportCardLevel(gradeLevel, gradeName, className) === "JUNIOR" ? (
+    return resolveReportCardLevel(gradeLevel, gradeName, className, gradeStage) === "JUNIOR" ? (
       <JuniorSecondaryReportCard {...commonProps} />
     ) : (
       <SeniorSecondaryReportCard {...commonProps} />

@@ -14,7 +14,9 @@ import { cn, formatCompactClassLabel } from "@/lib/utils";
 interface GradeOption {
   id: string;
   name: string;
-  level: string;
+  level: string | null;
+  stage?: string;
+  schoolLevel?: string;
 }
 
 interface ClassOption {

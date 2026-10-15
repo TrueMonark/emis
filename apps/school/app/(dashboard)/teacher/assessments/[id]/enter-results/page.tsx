@@ -112,9 +112,6 @@ export default function EnterResultsPage() {
   const [windowState, setWindowState] = useState<"before_open" | "open" | "closed" | "not_configured" | null>(null);
   const [windowData, setWindowData] = useState<{ opensAt: string; closesAt: string } | null>(null);
 
-  // Blocking dialog — shown when entry is permanently locked (closed / not_configured)
-  const [blockingWindowOpen, setBlockingWindowOpen] = useState(false);
-
   // Remarks: which rows have the textarea open
   const [openRemarks, setOpenRemarks] = useState<Set<string>>(new Set());
 
@@ -137,13 +134,6 @@ export default function EnterResultsPage() {
     fetchExistingResults();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId]);
-
-  // Open blocking dialog as soon as we know the window is permanently locked
-  useEffect(() => {
-    if (windowState === "closed" || windowState === "not_configured") {
-      setBlockingWindowOpen(true);
-    }
-  }, [windowState]);
 
   const fetchAssessment = async () => {
     try {
@@ -538,7 +528,24 @@ export default function EnterResultsPage() {
       </div>
 
       {/* ── Window / draft warnings ── */}
-      {/* "closed" and "not_configured" are handled by the blocking dialog below */}
+      {/* Closed or not configured: the marks stay visible (read-only), only editing is locked. */}
+      {(windowState === "closed" || windowState === "not_configured") && (
+        <div className="px-4 lg:px-0">
+          <Alert>
+            <Lock className="h-4 w-4" />
+            <AlertTitle>
+              {windowState === "not_configured" ? "Entry window not set — view only" : "Entry window closed — view only"}
+            </AlertTitle>
+            <AlertDescription>
+              {windowState === "not_configured"
+                ? "The head teacher hasn't set an entry window for this exam type, so marks can't be entered or changed yet. You can still view them."
+                : windowData
+                ? <>Mark entry closed on <strong>{fmtDate(windowData.closesAt)}</strong>. You can view the marks but not change them.</>
+                : "Mark entry has closed. You can view the marks but not change them."}
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
       {(windowState === "before_open" || (windowState === "open" && isDraft)) && (
         <div className="px-4 lg:px-0 space-y-3">
           {windowState === "before_open" && windowData && (
@@ -924,40 +931,6 @@ export default function EnterResultsPage() {
           <kbd className="px-1 py-0.5 rounded bg-muted border text-xs font-mono">↑</kbd> to go back
         </p>
       )}
-
-      {/* ── Blocking window dialog (closed / not configured) ── */}
-      <AlertDialog open={blockingWindowOpen}>
-        <AlertDialogContent
-          onEscapeKeyDown={(e: KeyboardEvent) => e.preventDefault()}
-          className="max-w-sm text-center"
-        >
-          <AlertDialogHeader className="items-center">
-            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-              <Lock className="h-6 w-6 text-destructive" />
-            </div>
-            <AlertDialogTitle className="text-center">
-              {windowState === "not_configured"
-                ? "Entry Window Not Configured"
-                : "Entry Window Closed"}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-center">
-              {windowState === "not_configured"
-                ? "The admin has not set an entry window for this exam type. Result entry is locked until a window is configured."
-                : windowData
-                ? <>The entry window for this assessment closed on <strong>{fmtDate(windowData.closesAt)}</strong>. Results are locked.</>
-                : "The entry window for this assessment has closed. Results are locked."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="justify-center sm:justify-center">
-            <AlertDialogAction
-              className="w-full sm:w-auto"
-              onClick={() => router.push("/teacher/assessments")}
-            >
-              Go Back to Assessments
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* ── Fill-zeros confirmation dialog ── */}
       <AlertDialog open={showFillZeroDialog} onOpenChange={setShowFillZeroDialog}>

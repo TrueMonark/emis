@@ -10,6 +10,7 @@ import {
   createTestGrade,
   createTestClass,
   createTestStudent,
+  assignClassTeacher,
 } from "../helpers/db";
 
 describe("bulk attendance marking (N+1 regression)", () => {
@@ -28,6 +29,7 @@ describe("bulk attendance marking (N+1 regression)", () => {
     const term = await createTestTerm(academicYear.id);
     const grade = await createTestGrade();
     const testClass = await createTestClass(grade.id);
+    await assignClassTeacher(teacherProfile!.id, testClass.id, academicYear.id);
 
     const newStudent = await createTestStudent({ firstName: "New" });
     const existingStudent = await createTestStudent({ firstName: "Existing" });

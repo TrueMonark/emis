@@ -39,7 +39,10 @@ import { CreateAcademicYearDialog } from "@/components/settings/create-academic-
 import { EditAcademicYearDialog } from "@/components/settings/edit-academic-year-dialog";
 import { CreateTermDialog } from "@/components/settings/create-term-dialog";
 import { EditTermDialog } from "@/components/settings/edit-term-dialog";
-import { useGrades } from "@/hooks/useGrades";
+import { useAuth } from "@/hooks/useAuth";
+import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
+import { YearLevelsManager } from "@/components/year-levels/year-levels-manager";
+import { PathwaysManager } from "@/components/year-levels/pathways-manager";
 import {
   Select,
   SelectContent,
@@ -94,8 +97,8 @@ export default function AcademicCalendarPage() {
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const [yearToClose, setYearToClose] = useState<string | null>(null);
 
-  const { grades, isLoading: gradesLoading, refetch: refetchGrades } = useGrades({ all: true });
-  const [seeding, setSeeding] = useState(false);
+  const { user } = useAuth();
+  const canEditCurriculum = isSchoolLeader(user?.role);
 
 
   const fetchAcademicYears = async () => {
@@ -133,21 +136,6 @@ export default function AcademicCalendarPage() {
   useEffect(() => { fetchAcademicYears(); }, []);
   useEffect(() => { if (selectedYearId) fetchTerms(selectedYearId); }, [selectedYearId]);
 
-  const handleSeedGrades = async () => {
-    try {
-      setSeeding(true);
-      const res = await authFetch("/api/admin/settings/seed-grades", {
-        method: "POST"
-      });
-      if (!res.ok) throw new Error("Failed to configure grades");
-      toast({ title: "Grade levels configured", description: "All 12 grade levels are now set up." });
-      refetchGrades();
-    } catch {
-      toast({ title: "Failed to configure grades", variant: "destructive" });
-    } finally {
-      setSeeding(false);
-    }
-  };
 
   const handleActivateYear = async (id: string) => {
     try {
@@ -241,7 +229,7 @@ export default function AcademicCalendarPage() {
         <div className="hidden lg:block text-right">
           <h1 className="text-xl font-bold leading-tight">Academic Calendar</h1>
           <p className="text-sm text-muted-foreground">
-            Manage academic years, terms, and grade levels
+            Manage academic years, terms, year levels and pathways
           </p>
         </div>
       </div>
@@ -260,7 +248,8 @@ export default function AcademicCalendarPage() {
         <TabsList className="mb-4 w-full lg:w-fit">
           <TabsTrigger value="years">Academic Years</TabsTrigger>
           <TabsTrigger value="terms">Terms</TabsTrigger>
-          <TabsTrigger value="grades">Grade Levels</TabsTrigger>
+          <TabsTrigger value="grades">Year Levels</TabsTrigger>
+          <TabsTrigger value="pathways">Pathways</TabsTrigger>
         </TabsList>
 
         {/* ══ ACADEMIC YEARS ══ */}
@@ -493,107 +482,14 @@ export default function AcademicCalendarPage() {
           </div>
         </TabsContent>
 
-        {/* ══ GRADES ══ */}
+        {/* ══ YEAR LEVELS ══ */}
         <TabsContent value="grades">
-          <div className="space-y-4">
-            {/* Progress bar */}
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">
-                {grades.length} of 12 grade levels configured
-              </span>
-              {grades.length === 12 && (
-                <span className="flex items-center gap-1 text-green-600 dark:text-green-400 text-xs font-medium">
-                  <CheckCircle className="h-3.5 w-3.5" />
-                  Complete
-                </span>
-              )}
-            </div>
-            <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className={cn(
-                  "h-full rounded-full transition-all",
-                  grades.length === 12 ? "bg-green-500" : "bg-primary"
-                )}
-                style={{ width: `${(grades.length / 12) * 100}%` }}
-              />
-            </div>
+          <YearLevelsManager canEdit={canEditCurriculum} />
+        </TabsContent>
 
-            {/* Incomplete warning */}
-            {!gradesLoading && grades.length > 0 && grades.length < 12 && (
-              <div className="flex items-center justify-between gap-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                  <p className="text-sm text-amber-800 dark:text-amber-300">
-                    <span className="font-medium">{12 - grades.length} grade{12 - grades.length !== 1 ? "s" : ""} missing.</span>{" "}
-                    Click to add the remaining grade levels.
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="shrink-0 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40"
-                  onClick={handleSeedGrades}
-                  disabled={seeding}
-                >
-                  {seeding ? "Configuring..." : "Configure Grades"}
-                </Button>
-              </div>
-            )}
-
-            {gradesLoading ? (
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <Skeleton key={i} className="h-14 rounded-xl" />
-                ))}
-              </div>
-            ) : grades.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted mb-3">
-                    <GraduationCap className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <p className="font-medium">No grades configured</p>
-                  <p className="text-sm text-muted-foreground mt-1 mb-5 max-w-xs">
-                    Configure all 12 grade levels for the Zambian education system (Grades 1–12)
-                  </p>
-                  <Button onClick={handleSeedGrades} disabled={seeding}>
-                    {seeding ? (
-                      <><span className="h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />Configuring...</>
-                    ) : (
-                      <><GraduationCap className="h-4 w-4 mr-2" />Configure Grade Levels</>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {grades.map((grade) => (
-                  <div
-                    key={grade.id}
-                    className="flex items-center gap-2.5 lg:gap-3 rounded-xl border bg-card px-3 py-2 lg:px-4 lg:py-3"
-                  >
-                    <div className="flex h-7 w-7 lg:h-8 lg:w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                      <GraduationCap className="h-3 w-3 lg:h-3.5 lg:w-3.5 text-muted-foreground" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold truncate">{grade.name}</p>
-                      <p className="text-xs text-muted-foreground">{grade.level}</p>
-                    </div>
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                        grade.schoolLevel === "PRIMARY"
-                          ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
-                          : "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400"
-                      )}
-                    >
-                      {grade.schoolLevel === "PRIMARY" ? "Pri" : "Sec"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        {/* ══ PATHWAYS ══ */}
+        <TabsContent value="pathways">
+          <PathwaysManager canEdit={canEditCurriculum} />
         </TabsContent>
       </Tabs>
 

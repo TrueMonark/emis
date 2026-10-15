@@ -764,7 +764,7 @@ export default function AttendancePage() {
                 <span>Status</span>
               </div>
 
-              <ScrollArea className="flex-1">
+              <ScrollArea className="flex-1 min-h-0">
                 <div className="divide-y">
                   {filteredStudents.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
@@ -1027,7 +1027,7 @@ export default function AttendancePage() {
 
         {/* Register — right 2/3 */}
         <div className="lg:col-span-2">
-          {renderRegister("h-[560px]")}
+          {renderRegister("h-[calc(100vh-10rem)] min-h-[560px]")}
         </div>
       </div>
 

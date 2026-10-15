@@ -338,7 +338,7 @@ export function NotificationsDrawer({
         </SheetHeader>
 
         {/* List */}
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="px-4 py-3">
             {loading ? (
               <div className="space-y-3">
