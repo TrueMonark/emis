@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { SidebarComponent } from "@/components/layout/app-sidebar";
 import { ThemeProvider } from "@/components/layout/theme-provider";
+import { PendingTransferNotice } from "@/components/layout/pending-transfer-notice";
 import { SidebarProvider, SidebarInset } from "@school/ui/components/sidebar";
 import { getRoleRoute } from "@/lib/auth/role-routes";
 import { Role } from "@school/shared/types/prisma-enums";
@@ -32,6 +33,12 @@ export default function DashboardLayout({
     try {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
+
+      // Education office staff without a school have their own pages.
+      if (parsedUser.office && !parsedUser.school) {
+        router.push("/office");
+        return;
+      }
 
       // Check if user has access to current route based on role hierarchy
       const userRole = parsedUser.role as Role;
@@ -79,6 +86,7 @@ export default function DashboardLayout({
       defaultTheme="dark"
       enableSystem={false}
       disableTransitionOnChange>
+      <PendingTransferNotice />
       {hasOwnLayout ? (
         // Each role renders its own chrome (sidebar on desktop, mobile layout on mobile)
         children

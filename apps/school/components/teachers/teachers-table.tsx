@@ -33,16 +33,19 @@ import { TeacherProfile, StaffStatus } from "@school/shared/types/prisma-enums";
 type TeacherWithRelations = TeacherProfile & {
   departments?: Array<{ department: { name: string; code: string } }>;
   subjects?: Array<{ subject: { id: string; name: string; code: string } }>;
-  user?: { email: string } | null;
+  user?: { id?: string; email: string; hasDefaultPassword?: boolean; lastLogin?: string | Date | null } | null;
 };
 
 interface TeachersTableProps {
   teachers: TeacherWithRelations[];
   onRowClick: (teacher: TeacherWithRelations) => void;
-  onEdit: (teacher: TeacherWithRelations) => void;
-  onDelete: (teacher: TeacherWithRelations) => void;
+  /** Left out for staff who can't be changed here (former staff, people joining) */
+  onEdit?: (teacher: TeacherWithRelations) => void;
+  onDelete?: (teacher: TeacherWithRelations) => void;
   onContact?: (teacher: TeacherWithRelations) => void;
   onResetPassword?: (teacher: TeacherWithRelations) => void;
+  /** Which rows get "Reset Password" (only people who asked, or accounts never used) */
+  canResetPassword?: (teacher: TeacherWithRelations) => boolean;
   showActions?: boolean;
   /** Hide the staff-number badge on the mobile card row (desktop table is unaffected). */
   hideStaffNumberOnMobile?: boolean;
@@ -74,6 +77,7 @@ export function TeachersTable({
   onDelete,
   onContact,
   onResetPassword,
+  canResetPassword,
   showActions = true,
   hideStaffNumberOnMobile = false,
   hideStatusBadgeOnMobile = false,
@@ -86,14 +90,16 @@ export function TeachersTable({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(teacher);
-          }}>
-          <Edit className="h-4 w-4 mr-2" />
-          Edit
-        </DropdownMenuItem>
+        {onEdit && (
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(teacher);
+            }}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </DropdownMenuItem>
+        )}
         {onContact && (
           <DropdownMenuItem
             onClick={(e) => {
@@ -104,7 +110,7 @@ export function TeachersTable({
             Contact
           </DropdownMenuItem>
         )}
-        {onResetPassword && (
+        {onResetPassword && (canResetPassword?.(teacher) ?? true) && (
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();
@@ -114,15 +120,17 @@ export function TeachersTable({
             Reset Password
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(teacher);
-          }}
-          className="text-destructive">
-          <Trash2 className="h-4 w-4 mr-2" />
-          Delete
-        </DropdownMenuItem>
+        {onDelete && (
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(teacher);
+            }}
+            className="text-destructive">
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

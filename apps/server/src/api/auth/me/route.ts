@@ -16,9 +16,21 @@ export const GET = withAuth(async (request: Request, user) => {
       throw new NotFoundError("User not found or inactive.");
     }
 
+    const [school, office, pendingTransfer] = await Promise.all([
+      authService.getSchoolSummary(user.userId),
+      authService.getOfficeSummary(user.userId),
+      authService.getPendingTransfer(user.userId),
+    ]);
+
     return ApiResponse.success({
       id: userData.id,
+      displayName: userData.displayName ?? null,
+      school,
+      office,
+      /** A transfer to another school waiting for confirmation (they keep working here until then) */
+      pendingTransfer,
       email: userData.email,
+      phone: userData.phone ?? null,
       role: userData.role,
       isActive: userData.isActive,
       hasDefaultPassword: userData.hasDefaultPassword,

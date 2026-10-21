@@ -11,6 +11,7 @@
  */
 
 import { PASSWORD_CHANGE_REQUIRED_HEADER } from "@school/shared/auth/password-change";
+import { SCHOOL_SETUP_REQUIRED_HEADER } from "@school/shared/auth/school-setup";
 
 /**
  * Get auth token from localStorage
@@ -45,6 +46,15 @@ export function authFetch(input: string, init: RequestInit = {}): Promise<Respon
       window.location.pathname !== "/change-password"
     ) {
       window.location.href = "/change-password";
+    }
+    // A new school is held on its setup wizard until the head finishes it.
+    if (
+      response.status === 403 &&
+      response.headers.get(SCHOOL_SETUP_REQUIRED_HEADER) === "true" &&
+      typeof window !== "undefined" &&
+      window.location.pathname !== "/setup"
+    ) {
+      window.location.href = "/setup";
     }
     return response;
   });

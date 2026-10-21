@@ -5,14 +5,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@school/ui/components/button";
 import { ChangePasswordCard } from "@/components/profile/change-password-card";
 import { api, getAuthToken } from "@/lib/api-client";
-import { getRoleRoute } from "@/lib/auth/role-routes";
+import { homeRouteFor, type SignedInPerson } from "@/lib/auth/home-route";
 import { Role } from "@school/shared/types/prisma-enums";
 import { MonarkDevsCredit } from "@/components/layout/monark-devs-credit";
 
-interface Me {
-  role: Role;
-  hasDefaultPassword: boolean;
-}
+type Me = SignedInPerson & { role: Role; hasDefaultPassword: boolean };
 
 /**
  * Where everyone on a one-time password lands after signing in (and whenever the server
@@ -32,7 +29,7 @@ export default function ChangePasswordPage() {
       .get<{ data: Me }>("/auth/me")
       .then(({ data }) => {
         if (!data.hasDefaultPassword) {
-          router.replace(getRoleRoute(data.role));
+          router.replace(homeRouteFor(data));
           return;
         }
         setMe(data);
@@ -49,7 +46,7 @@ export default function ChangePasswordPage() {
     } catch {
       // Stored user is only a convenience; the server is the source of truth.
     }
-    router.replace(me ? getRoleRoute(me.role) : "/login");
+    router.replace(me ? homeRouteFor({ ...me, hasDefaultPassword: false }) : "/login");
   };
 
   const signOut = () => {

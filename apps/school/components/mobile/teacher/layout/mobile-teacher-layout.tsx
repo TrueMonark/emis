@@ -18,6 +18,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/teacher/assessments":   "Assessments",
   "/teacher/students":      "Performance",
   "/teacher/attendance":    "Attendance",
+  "/teacher/weekend-classes": "Weekend classes",
   "/teacher/lesson-plans":  "Lesson Plans",
   "/teacher/analysis":      "Analysis",
   "/teacher/reports":       "Reports",

@@ -265,8 +265,9 @@ enrolments, classes, timetable, year levels…):
    phone can create an attendance record offline and keep the same ID when it syncs.
 2. **Every row has `version`** (goes up on each change) and `updatedAt`. A phone sends the version it
    last saw, and the server can tell whether someone else changed it meanwhile.
-3. **Deletes become tombstones** (`deletedAt`), never hard deletes, so a deletion reaches phones that
-   were offline.
+3. **Deletes leave a tombstone**, so a deletion reaches phones that were offline. As built (3c):
+   the change log's DELETE line is the tombstone and the row itself is deleted, so no query has
+   to learn to skip "deleted" rows.
 4. **A change log in the database**: a table `ChangeLog(seq, schoolId, entity, entityId, op,
    changedAt, changedBy)`, filled by **database triggers** so no code path can forget it. A phone
    asks "what changed since #seq?". That's reliable even when phone clocks are wrong.
@@ -313,9 +314,9 @@ come next (§8).
 |---|---|---|
 | **3a** ✅ built 15 October 2026 (`docs/phases/phase-3a-checklist.md`) | Offices, schools, memberships, `schoolId` everywhere, Row-Level Security, migration of existing data | Two test schools can't see each other's data through any route, and RLS blocks a raw query |
 | **3b** ✅ built 16 October 2026 (`docs/phases/phase-3b-checklist.md`) | Per-school year levels and pathways; learner number; grading switched to `exam`; national subject catalogue and pathway rules | A school can run Grade 9 and Form 1 side by side; all grading/report-card tests pass |
-| **3c** | Offline-ready data: versions, tombstones, change-log triggers, teacher-scope queries | Every change to a syncable table appears in the change log; scope queries return only a teacher's data |
-| **4** | Account chain (HQ → PEO → DEBS → school), **first-login setup for a new school's head teacher** (academic year, terms, school info and the other required settings before anything else unlocks; requested 12 October 2026), password-reset requests through head/deputy → DEBS (§3b) using the one-time passwords already built, the same one-time passwords for office accounts, audit log, office app shell | The full chain works; a DEBS can't create a school outside its district |
-| **5** | Sync API: pull changes, push operations, conflict and idempotency handling | Tests: offline edits sync; conflicts and resends behave as specified |
+| **3c** ✅ built 16 October 2026 (`docs/phases/phase-3c-checklist.md`) | Offline-ready data: versions, tombstones, change-log triggers, teacher-scope queries | Every change to a syncable table appears in the change log; scope queries return only a teacher's data |
+| **4** ✅ (4a built 17 October 2026: offices, account chain, setup wizard, audit log — `docs/phases/phase-4a-checklist.md`; 4b built 17 October 2026: reset requests, phone sign-in, transfers, former staff — `docs/phases/phase-4b-checklist.md`) | Account chain (HQ → PEO → DEBS → school), **first-login setup for a new school's head teacher** (academic year, terms, school info and the other required settings before anything else unlocks; requested 12 October 2026), password-reset requests through head/deputy → DEBS (§3b) using the one-time passwords already built, the same one-time passwords for office accounts, audit log, office app shell | The full chain works; a DEBS can't create a school outside its district |
+| **5** ✅ built 18 October 2026 (`docs/phases/phase-5-checklist.md`, reference `docs/design/sync-api.md`; with weekend classes) | Sync API: pull changes, push operations, conflict and idempotency handling | Tests: offline edits sync; conflicts and resends behave as specified |
 | **6** | Teacher mobile app (React Native / Expo, shares `packages/shared`): sign in, pick school, timetable, attendance, marks, all offline | A teacher marks attendance with no signal, and it syncs later |
 | **7+** | DEBS/PEO dashboards (School Profile indicators first), returns with Draft→Approved workflow, announcements, offline for the web app | — |
 

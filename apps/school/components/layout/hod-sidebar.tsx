@@ -12,6 +12,7 @@ import {
   FileText,
   BarChart3,
   Grid3X3,
+  CalendarPlus,
 } from "lucide-react";
 import {
   Sidebar,
@@ -82,6 +83,11 @@ const hodNavGroups = [
         title: "Assessments",
         url: "/hod/assessments",
         icon: ClipboardList,
+      },
+      {
+        title: "Weekend classes",
+        url: "/hod/weekend-classes",
+        icon: CalendarPlus,
       },
       {
         title: "Reports",

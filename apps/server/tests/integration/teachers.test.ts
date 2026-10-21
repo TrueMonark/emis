@@ -19,6 +19,7 @@ import {
   createTestDepartment,
 } from "../helpers/db";
 import prisma from "@/lib/db/prisma";
+import { passwordResetService } from "@/features/password-resets/passwordReset.service";
 
 describe("teachers routes", () => {
   let adminToken: string;
@@ -145,8 +146,20 @@ describe("teachers routes", () => {
     expect(Array.isArray(json.data)).toBe(true);
   });
 
-  it("resets a teacher's password to a new one-time password (head/deputy/admin only), which then logs in", async () => {
+  it("resets a teacher's password to a new one-time password (head/deputy/admin only, and only once they've asked), which then logs in", async () => {
     const teacher = await createTestUser({ role: Role.TEACHER, email: "reset-target@example.com" });
+
+    // No "Forgot password?" request yet: no reset (no blanket "reset anyone" control).
+    const notAsked = await callRoute<{ error: string }>(resetPassword, {
+      method: "POST",
+      url: `/api/teachers/${teacher.teacherProfile!.id}/reset-password`,
+      token: adminToken,
+      params: { id: teacher.teacherProfile!.id },
+    });
+    expect(notAsked.status).toBe(403);
+    expect(notAsked.json.error).toMatch(/Forgot password/);
+
+    await passwordResetService.request("reset-target@example.com");
 
     const denied = await callRoute(resetPassword, {
       method: "POST",

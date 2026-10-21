@@ -13,6 +13,8 @@
  *   school memberships no longer use it.
  * TEACHER -> Teaching and classroom management
  * CLERK -> Administrative tasks (parallel to TEACHER)
+ * FINANCE -> School fees and money only (bursar); below everything else, no teaching or learner
+ *   records. Its API access is limited to /api/finance/* (see auth/finance-access.ts).
  *
  * For "is this person in charge of the school?" use isSchoolLeader(), never a check for one
  * specific leadership role.
@@ -31,6 +33,7 @@ export const ROLE_HIERARCHY = {
   DEPUTY_HEAD: 4, // same rights as the head teacher
   TEACHER: 1,
   CLERK: 1, // Same level as teacher, different permissions
+  FINANCE: 0, // fees only: never passes a teacher/clerk check
 } as const;
 
 /** The school's leadership roles: all have the same rights. */
@@ -209,6 +212,7 @@ export const ROLE_PERMISSIONS = {
     'manage_classes',
     'view_records',
   ],
+  FINANCE: ['manage_school_fees'],
 } as const;
 
 /**

@@ -10,8 +10,13 @@ import { teacherRepository } from "./teacher.repository";
 import { subjectRepository } from "../subjects/subject.repository";
 import prisma from "@/lib/db/prisma";
 import { UnauthorizedError, NotFoundError, ValidationError } from "@/lib/errors";
+import { ForbiddenError } from "@/lib/http/errors";
 import { sendStaffSms } from "@/lib/sms/send-staff-sms";
 import { issueOneTimePassword, oneTimePasswordTtlHours } from "@/features/auth/one-time-password";
+import { signInPhoneFor, syncSignInPhone } from "@/features/auth/sign-in-phone";
+import { passwordResetService } from "@/features/password-resets/passwordReset.service";
+import { auditService } from "@/features/audit/audit.service";
+import { schoolMembershipRepository, staffWhere, type StaffListFilter } from "@/features/schools/schoolMembership.repository";
 import { requireSchoolId } from "@/lib/db/tenant";
 
 /** A one-time password just issued for an account — shown once, never stored in plain text. */
@@ -33,7 +38,7 @@ import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 // NOTE: HOD is a POSITION (Department.hodTeacherId), not a role
 export interface ServiceContext {
   userId: string;
-  role: "ADMIN" | "HEAD_TEACHER" | "DEPUTY_HEAD" | "TEACHER" | "CLERK";
+  role: "ADMIN" | "HEAD_TEACHER" | "DEPUTY_HEAD" | "TEACHER" | "CLERK" | "FINANCE";
 }
 
 // Input DTOs
@@ -78,6 +83,8 @@ export interface TeacherFilters {
   gender?: Gender;
   qualification?: QualificationLevel;
   search?: string;
+  /** current (default), former (left / transferred out) or joining (transfer waiting) */
+  staff?: StaffListFilter;
 }
 
 export interface PaginationParams {
@@ -335,6 +342,19 @@ export class TeacherService {
     return assignments;
   }
 
+  /**
+   * Former staff (transferred or left) stay visible for the school's history, but their details
+   * now belong to their current school: nothing here may change them.
+   */
+  private async assertCurrentStaff(teacher: { userId: string; firstName: string; lastName: string }) {
+    const current = await schoolMembershipRepository.isMember(teacher.userId, requireSchoolId(), { currentOnly: true });
+    if (!current) {
+      throw new ForbiddenError(
+        `${teacher.firstName} ${teacher.lastName} no longer works at this school. Their details are kept by their current school.`
+      );
+    }
+  }
+
   // ==================== PUBLIC API ====================
 
   /**
@@ -366,6 +386,8 @@ export class TeacherService {
 
     // Each new account gets its own random one-time password (never a shared default).
     const otp = await issueOneTimePassword();
+    // They can also sign in with their mobile number, unless another account already uses it.
+    const signInPhone = await signInPhoneFor(input.phone);
 
     // Create teacher with user account
     const teacherData: Prisma.TeacherProfileCreateInput = {
@@ -384,6 +406,7 @@ export class TeacherService {
       user: {
         create: {
           email: input.email,
+          phone: signInPhone,
           passwordHash: otp.passwordHash,
           role: "TEACHER",
           isActive: true,
@@ -431,8 +454,8 @@ export class TeacherService {
     filters?: TeacherFilters,
     _context?: ServiceContext
   ): Promise<TeacherProfile[]> {
-    // Build where clause (same logic as getTeachers)
-    const where: Prisma.TeacherProfileWhereInput = {};
+    // Build where clause (same logic as getTeachers). Dropdowns only ever offer current staff.
+    const where: Prisma.TeacherProfileWhereInput = { ...staffWhere(filters?.staff) };
 
     if (filters?.status) {
       where.status = filters.status;
@@ -484,7 +507,7 @@ export class TeacherService {
     };
   }> {
     // Build where clause with proper typing
-    const where: Prisma.TeacherProfileWhereInput = {};
+    const where: Prisma.TeacherProfileWhereInput = { ...staffWhere(filters?.staff) };
 
     if (filters?.status) {
       where.status = filters.status;
@@ -614,6 +637,7 @@ export class TeacherService {
     if (!existing) {
       throw new NotFoundError(`Teacher with ID ${id} not found`);
     }
+    await this.assertCurrentStaff(existing);
 
     // Validate age if dateOfBirth is being updated
     if (input.dateOfBirth) {
@@ -642,6 +666,9 @@ export class TeacherService {
       qualification: input.qualification,
       yearsExperience: input.yearsExperience,
     });
+    if (input.phone && input.phone !== existing.phone) {
+      await syncSignInPhone(existing.userId, input.phone);
+    }
 
     // Update department assignment if provided
     if (input.departmentId) {
@@ -702,6 +729,7 @@ export class TeacherService {
     if (!existing) {
       throw new NotFoundError(`Teacher with ID ${id} not found`);
     }
+    await this.assertCurrentStaff(existing);
 
     // Business rule: Cannot change status of retired teachers
     if (existing.status === StaffStatus.RETIRED) {
@@ -750,6 +778,7 @@ export class TeacherService {
     if (!existing) {
       throw new NotFoundError(`Teacher with ID ${id} not found`);
     }
+    await this.assertCurrentStaff(existing);
 
     return teacherRepository.delete(id);
   }
@@ -778,9 +807,12 @@ export class TeacherService {
   }
 
   /**
-   * Reset a teacher's password to a new random one-time password. Returned once for the
-   * person resetting it to hand over (and sent by SMS when configured); the teacher must
-   * choose their own password at next login. HEAD_TEACHER, DEPUTY_HEAD and ADMIN can do this.
+   * "Reset password" for a teacher (head teacher / deputy head). Allowed only
+   *  - while that person has an open "Forgot password?" request to this school (it closes the
+   *    request — see passwordReset.service.ts), or
+   *  - to re-issue the one-time password of an account that has never been used (lost or
+   *    expired before their first sign-in).
+   * There is no blanket "reset anyone" control (design §3b).
    */
   async resetPassword(teacherId: string, context: ServiceContext): Promise<IssuedPasswordInfo> {
     if (!isSchoolLeader(context.role)) {
@@ -797,20 +829,46 @@ export class TeacherService {
     if (teacher.user.id === context.userId) {
       throw new ValidationError("You can't reset your own password here. Use Change Password instead.");
     }
+    await this.assertCurrentStaff(teacher);
+
+    const open = await passwordResetService.openRequestAtCurrentSchool(teacher.user.id);
+    if (open) {
+      const result = await passwordResetService.reset(open.id, {
+        kind: "school",
+        userId: context.userId,
+        role: context.role,
+        schoolId: requireSchoolId(),
+      });
+      return { temporaryPassword: result.temporaryPassword, temporaryPasswordExpiresAt: result.temporaryPasswordExpiresAt };
+    }
+
+    const neverUsed = teacher.user.hasDefaultPassword && !teacher.user.lastLogin;
+    if (!neverUsed) {
+      throw new ForbiddenError(
+        `${teacher.firstName} ${teacher.lastName} hasn't asked for a new password. Ask them to press "Forgot password?" on the sign-in page; their request will appear here.`
+      );
+    }
 
     const otp = await issueOneTimePassword();
     await teacherRepository.resetPassword(teacher.user.id, otp.passwordHash, otp.expiresAt);
 
-    logger.info("Teacher password reset", {
+    logger.info("One-time password re-issued for an unused account", {
       teacherId,
       resetBy: context.userId,
       expiresAt: otp.expiresAt.toISOString(),
+    });
+    await auditService.record({
+      action: "PASSWORD_RESET",
+      targetType: "ACCOUNT",
+      targetId: teacher.user.id,
+      schoolId: requireSchoolId(),
+      summary: `Gave ${teacher.firstName} ${teacher.lastName} a new one-time password (account not used yet)`,
     });
 
     // Fire-and-forget SMS notification
     sendStaffSms(
       teacher.phone,
-      `Your school system password has been reset.\nEmail: ${teacher.user.email}\nOne-time password: ${otp.password}\nIt expires in ${oneTimePasswordTtlHours()} hours. You will be asked to choose your own password when you log in.`
+      `Your school system account is ready.\nEmail: ${teacher.user.email}\nOne-time password: ${otp.password}\nIt expires in ${oneTimePasswordTtlHours()} hours. You will be asked to choose your own password when you log in.`
     ).catch((err) => logger.error("Password reset SMS failed", err instanceof Error ? err : undefined));
 
     return { temporaryPassword: otp.password, temporaryPasswordExpiresAt: otp.expiresAt };

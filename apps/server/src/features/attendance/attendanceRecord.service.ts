@@ -14,6 +14,7 @@ import {
   getTodayUtcMidnight,
 } from "@/lib/utils/date-utils";
 import prisma from "@/lib/db/prisma";
+import { isWeekend, WEEKEND_ATTENDANCE_MESSAGE } from "@school/shared/calendar/weekend";
 
 export type ServiceContext = AuthContext & {
   teacherProfileId?: string;
@@ -78,6 +79,13 @@ export class AttendanceRecordService {
     }
   }
 
+  /** No attendance on a weekend: weekend lessons are special classes with their own register. */
+  private validateNotWeekend(date: Date): void {
+    if (isWeekend(normalizeToUtcMidnight(date))) {
+      throw new ValidationError(WEEKEND_ATTENDANCE_MESSAGE);
+    }
+  }
+
   private validateDateNotFuture(date: Date): void {
     const today = getTodayUtcMidnight();
     if (normalizeToUtcMidnight(date) > today) {
@@ -132,6 +140,7 @@ export class AttendanceRecordService {
     requireMinimumRole(context, Role.TEACHER, "You do not have permission to mark attendance");
     await this.verifySlotOwnership(data.timetableSlotId, data.date, context);
 
+    this.validateNotWeekend(data.date);
     this.validateDateNotFuture(data.date);
     await this.validateDateInTerm(data.date, data.termId);
     const { term } = await this.validateReferences(data.studentId, data.classId, data.termId);
@@ -202,6 +211,7 @@ export class AttendanceRecordService {
       return { successful: 0, failed };
     }
 
+    this.validateNotWeekend(data.date);
     this.validateDateNotFuture(data.date);
     await this.validateDateInTerm(data.date, data.termId);
 
@@ -399,6 +409,7 @@ export class AttendanceRecordService {
     if (existingRecord.term.academicYear.isClosed) {
       throw new ValidationError("Cannot update attendance in a closed academic year");
     }
+    this.validateNotWeekend(existingRecord.date);
     if (!existingRecord.timetableSlotId) {
       await registerCoverService.assertCanTakeDailyRegister(
         existingRecord.classId,

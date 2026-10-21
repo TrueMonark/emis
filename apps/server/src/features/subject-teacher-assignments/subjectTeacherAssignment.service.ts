@@ -25,7 +25,7 @@ import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 // departmentId is populated by middleware after verifying HOD position
 export interface ServiceContext {
   userId: string;
-  role: "ADMIN" | "HEAD_TEACHER" | "DEPUTY_HEAD" | "TEACHER" | "CLERK";
+  role: "ADMIN" | "HEAD_TEACHER" | "DEPUTY_HEAD" | "TEACHER" | "CLERK" | "FINANCE";
   departmentId?: string; // For HOD context (populated by withHODAccess middleware)
 }
 

@@ -47,8 +47,14 @@ describe("daily register and register covers", () => {
   let studentId: string;
   const today = isoDay(todayUtc());
   const inThreeDays = isoDay(new Date(todayUtc().getTime() + 3 * DAY));
+  // No register is taken on a weekend (Phase 5), so the register day is the latest weekday.
+  const registerDay = (() => {
+    let d = todayUtc();
+    while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d = new Date(d.getTime() - DAY);
+    return isoDay(d);
+  })();
 
-  const takeRegister = (token: string, date = today) =>
+  const takeRegister = (token: string, date = registerDay) =>
     callRoute(markAttendance, {
       method: "POST",
       url: "/api/attendance",
@@ -69,7 +75,7 @@ describe("daily register and register covers", () => {
       body: {
         classId,
         teacherId: coverProfileId,
-        startDate: today,
+        startDate: registerDay,
         endDate: inThreeDays,
         reason: "Workshop in Lusaka",
         ...body,

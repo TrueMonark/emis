@@ -18,7 +18,7 @@ import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 // NOTE: HOD is a POSITION (Department.hodTeacherId), not a role
 export interface ServiceContext {
   userId: string;
-  role: "ADMIN" | "HEAD_TEACHER" | "DEPUTY_HEAD" | "TEACHER" | "CLERK";
+  role: "ADMIN" | "HEAD_TEACHER" | "DEPUTY_HEAD" | "TEACHER" | "CLERK" | "FINANCE";
 }
 
 // Input DTOs

@@ -15,7 +15,6 @@ import { Button } from "@school/ui/components/button";
 import { Checkbox } from "@school/ui/components/checkbox";
 import { Input } from "@school/ui/components/input";
 import { Badge } from "@school/ui/components/badge";
-import { ScrollArea } from "@school/ui/components/scroll-area";
 import { Skeleton } from "@school/ui/components/skeleton";
 import { STAGE_LABELS, type YearStage } from "@school/shared/curriculum/year-levels";
 import { api } from "@/lib/api-client";
@@ -139,7 +138,9 @@ export function CatalogueSubjectsDialog({
           />
         </div>
 
-        <ScrollArea className="flex-1 min-h-0 -mx-1 px-1" style={{ maxHeight: "55vh" }}>
+        {/* A plain scrolling box: the Radix ScrollArea only scrolls with a fixed height, so with a
+            max-height the list was cut off and couldn't be scrolled. */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain -mx-1 px-1 max-h-[55vh]">
           {loading ? (
             <div className="space-y-2">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -185,7 +186,7 @@ export function CatalogueSubjectsDialog({
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

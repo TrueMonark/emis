@@ -1,9 +1,17 @@
+import { isAllowedForFinance, FINANCE_ONLY_MESSAGE } from "@school/shared/auth/finance-access";
 import { verifyToken } from "@/lib/auth/jwt";
 import { ApiResponse } from "@/lib/http/api-response";
 import { logger } from "@/lib/logger/logger";
 import prisma from "@/lib/db/prisma";
 import { authRepository } from "@/features/auth/auth.repository";
-import { schoolMembershipRepository, NO_SCHOOL_MESSAGE } from "@/features/schools/schoolMembership.repository";
+import {
+  schoolMembershipRepository,
+  NO_SCHOOL_MESSAGE,
+  OFFICE_ACCOUNT_MESSAGE,
+  NOT_OFFICE_MESSAGE,
+} from "@/features/schools/schoolMembership.repository";
+import { officeRepository } from "@/features/offices/office.repository";
+import { isAllowedDuringSetup } from "@school/shared/auth/school-setup";
 import { runWithTenant } from "@/lib/db/tenant";
 import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 
@@ -25,6 +33,16 @@ export interface AuthUser {
   permissions: string[];
   /** The school this request works in. Every query in the request is limited to it. */
   schoolId: string | null;
+  /**
+   * Set on /api/office/* routes: the person's ACTIVE education office role. Office routes work
+   * with no school (schoolId null), so school-owned tables look empty to them.
+   */
+  office?: {
+    membershipId: string;
+    officeId: string;
+    officeType: "HQ" | "PROVINCIAL" | "DISTRICT";
+    role: "OFFICE_HEAD" | "OFFICER";
+  };
 }
 
 /**
@@ -103,13 +121,57 @@ export function withAuth(handler: AuthenticatedRouteHandler) {
         return ApiResponse.passwordChangeRequired();
       }
 
+      // Education office routes (Phase 4): the person's ACTIVE office role, no school.
+      if (path.startsWith("/api/office/")) {
+        const officeMembership = await officeRepository.findActiveMembership(dbUser.id);
+        if (!officeMembership) {
+          logger.logAuth("Request refused: no active office membership", decoded.userId, false, { path });
+          return ApiResponse.forbidden(NOT_OFFICE_MESSAGE);
+        }
+        return await runWithTenant({ schoolId: null, userId: dbUser.id }, async () => {
+          const user: AuthUser = {
+            userId: decoded.userId,
+            email: decoded.email,
+            role: dbUser.role,
+            permissions: [],
+            schoolId: null,
+            office: {
+              membershipId: officeMembership.id,
+              officeId: officeMembership.officeId,
+              officeType: officeMembership.office.type,
+              role: officeMembership.role,
+            },
+          };
+          logger.logAuth("Request authenticated", user.userId, true, {
+            path,
+            office: officeMembership.officeId,
+            officeRole: officeMembership.role,
+          });
+          return await handler(request, user, context || {});
+        });
+      }
+
       // The school this request works in: the person's ACTIVE membership. Without one (left,
       // transferred, or a transfer not yet confirmed) they can only see who they are and
       // change their password.
       const membership = await schoolMembershipRepository.findActiveForUser(dbUser.id);
       if (!membership && !ALLOWED_BEFORE_PASSWORD_CHANGE.has(path)) {
         logger.logAuth("Request refused: no active school membership", decoded.userId, false, { path });
-        return ApiResponse.forbidden(NO_SCHOOL_MESSAGE);
+        const officeMembership = await officeRepository.findActiveMembership(dbUser.id);
+        return ApiResponse.forbidden(officeMembership ? OFFICE_ACCOUNT_MESSAGE : NO_SCHOOL_MESSAGE);
+      }
+
+      // A new school stays in first-time setup until its head finishes it (enforced here, not
+      // just by the screens).
+      if (membership && !membership.school.setupCompletedAt && !isAllowedDuringSetup(path)) {
+        logger.logAuth("Request refused: school setup not finished", decoded.userId, false, { path });
+        return ApiResponse.schoolSetupRequired();
+      }
+
+      // Finance staff (school fees) use the fees API only.
+      if (membership?.role === "FINANCE" && !isAllowedForFinance(path)) {
+        logger.logAuth("Request refused: finance account outside the fees API", decoded.userId, false, { path });
+        return ApiResponse.forbidden(FINANCE_ONLY_MESSAGE);
       }
 
       const tenant = { schoolId: membership?.schoolId ?? null, userId: dbUser.id };

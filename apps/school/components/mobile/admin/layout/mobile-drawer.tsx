@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Home, CalendarCheck, ClipboardList, Calendar,
   FileCheck, Building2, FileText, UserCheck,
-  Settings, LogOut, Webhook,
+  Settings, LogOut, Webhook, Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -17,6 +17,7 @@ import {
 import { Separator } from "@school/ui/components/separator";
 import { Avatar, AvatarFallback } from "@school/ui/components/avatar";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeesLink } from "@/hooks/useFeesEnabled";
 
 const drawerNavItems = [
   { title: "Dashboard",    href: "/admin",                    icon: Home,          exact: true  },
@@ -38,6 +39,10 @@ interface MobileAdminDrawerProps {
 export function MobileAdminDrawer({ open, onClose, user }: MobileAdminDrawerProps) {
   const pathname = usePathname();
   const { logout } = useAuth();
+  const showFees = useFeesLink();
+  const items = showFees
+    ? [...drawerNavItems, { title: "School fees", href: "/finance", icon: Wallet, exact: false }]
+    : drawerNavItems;
 
   const handleLogout = () => {
     onClose();
@@ -83,7 +88,7 @@ export function MobileAdminDrawer({ open, onClose, user }: MobileAdminDrawerProp
 
         {/* Nav items — scrollable if many */}
         <nav className="flex flex-col gap-1 px-3 py-3 flex-1 overflow-y-auto">
-          {drawerNavItems.map((item) => {
+          {items.map((item) => {
             const isActive = item.exact
               ? pathname === item.href
               : pathname === item.href || pathname.startsWith(item.href + "/");

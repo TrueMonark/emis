@@ -20,9 +20,11 @@
     "db:migrate:deploy": "prisma migrate deploy && npm run db:generate",
     "db:migrate:status": "prisma migrate status",
     "db:migrate:resolve-lesson-logs": "prisma migrate resolve --applied 20260924080000_add_lesson_logs",
+    "db:seed:demo": "tsx prisma/seed-demo-term.ts",
     "db:seed": "prisma db seed",
     "db:seed:permissions": "node scripts/seed-permissions.cjs",
     "db:sync-catalogue": "tsx scripts/sync-catalogue.ts",
+    "office:create-account": "tsx scripts/create-office-account.ts",
     "db:studio": "prisma studio",
     "db:reset": "tsx scripts/reset-database.ts"
   },

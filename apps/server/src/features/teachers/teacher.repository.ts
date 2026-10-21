@@ -1,6 +1,7 @@
 import prisma from "@/lib/db/prisma";
 import { Prisma } from "@prisma/client";
 import { TeacherProfile, TeacherSubjectRole } from "@school/shared/types/prisma-enums";
+import { currentStaffWhere } from "@/features/schools/schoolMembership.repository";
 
 /**
  * Teacher Repository - Data Access Layer
@@ -100,7 +101,7 @@ export class TeacherRepository {
    */
   findByStatus(status: TeacherProfile["status"]) {
     return prisma.teacherProfile.findMany({
-      where: { status },
+      where: { status, ...currentStaffWhere() },
     });
   }
 
@@ -142,7 +143,11 @@ export class TeacherRepository {
         },
         user: {
           select: {
+            id: true,
             email: true,
+            // So the Teachers page can offer "re-issue one-time password" for unused accounts
+            hasDefaultPassword: true,
+            lastLogin: true,
           },
         },
       },

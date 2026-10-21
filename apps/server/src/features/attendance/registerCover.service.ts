@@ -1,3 +1,4 @@
+import { currentStaffWhere } from "@/features/schools/schoolMembership.repository";
 import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
 import { Role } from "@school/shared/types/prisma-enums";
 import prisma from "@/lib/db/prisma";
@@ -145,6 +146,7 @@ export class RegisterCoverService {
     return prisma.teacherProfile.findMany({
       where: {
         status: "ACTIVE",
+        ...currentStaffWhere(),
         ...(classTeacher ? { id: { not: classTeacher } } : {}),
       },
       select: { id: true, firstName: true, lastName: true, staffNumber: true },

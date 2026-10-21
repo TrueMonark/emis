@@ -18,6 +18,8 @@ import {
   PanelLeft,
   FileCheck,
   TrendingUp,
+  CalendarPlus,
+  Wallet,
 } from "lucide-react";
 import {
   Sidebar,
@@ -31,6 +33,7 @@ import {
 } from "@school/ui/components/sidebar";
 import { SidebarBrand } from "@/components/layout/sidebar-brand";
 import { NavUser } from "@/components/layout/nav-user";
+import { useFeesLink } from "@/hooks/useFeesEnabled";
 
 interface SidebarComponentProps extends React.ComponentProps<typeof Sidebar> {
   user?: {
@@ -123,6 +126,11 @@ const navGroups = [
         icon: CalendarCheck,
       },
       {
+        title: "Weekend classes",
+        url: "/admin/weekend-classes",
+        icon: CalendarPlus,
+      },
+      {
         title: "Assessments",
         url: "/admin/assessments",
         icon: ClipboardList,
@@ -146,7 +154,14 @@ const navGroups = [
   },
 ];
 
+/** Shown to the head teacher and deputy when the school has the fees module. */
+const feesGroup = {
+  label: "Finance",
+  items: [{ title: "School fees", url: "/finance", icon: Wallet }],
+};
+
 export function SidebarComponent({ user, ...props }: SidebarComponentProps) {
+  const showFees = useFeesLink();
   const formatRole = (role: string) => {
     return role
       .split("_")
@@ -172,7 +187,7 @@ export function SidebarComponent({ user, ...props }: SidebarComponentProps) {
         <SidebarHeaderContent />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain groups={navGroups} />
+        <NavMain groups={showFees ? [...navGroups, feesGroup] : navGroups} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />

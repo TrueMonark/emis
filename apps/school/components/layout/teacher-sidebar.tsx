@@ -13,6 +13,7 @@ import {
   PanelLeft,
   BarChart3,
   Clock,
+  CalendarPlus,
 } from "lucide-react";
 import {
   Sidebar,
@@ -79,6 +80,11 @@ const teacherNavGroups = [
         title: "Attendance",
         url: "/teacher/attendance",
         icon: CalendarCheck,
+      },
+      {
+        title: "Weekend classes",
+        url: "/teacher/weekend-classes",
+        icon: CalendarPlus,
       },
       {
         title: "Assessments",

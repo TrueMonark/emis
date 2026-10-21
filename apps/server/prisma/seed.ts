@@ -53,7 +53,7 @@ async function demoSchoolId(): Promise<string> {
   const school = await systemPrisma.school.upsert({
     where: { id: "school-demo" },
     update: {},
-    create: { id: "school-demo", name: "Demo School", districtOfficeId: "office-district-unassigned" },
+    create: { id: "school-demo", name: "Demo School", districtOfficeId: "office-district-unassigned", setupCompletedAt: new Date() },
   });
   return school.id;
 }

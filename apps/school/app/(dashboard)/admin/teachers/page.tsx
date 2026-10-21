@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { Input } from "@school/ui/components/input";
 import { Button } from "@school/ui/components/button";
@@ -28,6 +28,7 @@ import {
   AlertTriangle,
   KeyRound,
   Loader2,
+  UserPlus,
 } from "lucide-react";
 import { Skeleton } from "@school/ui/components/skeleton";
 import {
@@ -70,6 +71,11 @@ import {
   OneTimePasswordDialog,
   type IssuedPassword,
 } from "@/components/accounts/one-time-password-dialog";
+import { ResetRequestsList, type ResetRequestRow } from "@/components/accounts/reset-requests-list";
+import { TransfersList } from "@/components/transfers/transfers-list";
+import { AddExistingStaffDialog } from "@/components/transfers/add-existing-staff-dialog";
+
+type StaffFilter = "current" | "joining" | "former";
 
 export default function TeachersManagement() {
   const { toast } = useToast();
@@ -93,6 +99,16 @@ export default function TeachersManagement() {
   const [teacherToReset, setTeacherToReset] = useState<any>(null);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [issuedPassword, setIssuedPassword] = useState<IssuedPassword | null>(null);
+  // Current staff (default), people joining by transfer, or former staff (read-only)
+  const [staffFilter, setStaffFilter] = useState<StaffFilter>("current");
+  const [addExistingOpen, setAddExistingOpen] = useState(false);
+  // People with an open "Forgot password?" request: only they get a Reset Password action
+  const [openResetUserIds, setOpenResetUserIds] = useState<Set<string>>(new Set());
+  const [requestsVersion, setRequestsVersion] = useState(0);
+  const onResetRequests = useCallback(
+    (rows: ResetRequestRow[]) => setOpenResetUserIds(new Set(rows.map((r) => r.userId))),
+    []
+  );
 
   // Mobile-only: which of the row-one filters is currently focused/open.
   const [activeMobileFilter, setActiveMobileFilter] = useState<
@@ -108,6 +124,7 @@ export default function TeachersManagement() {
         qualification:
           qualificationFilter !== "all" ? qualificationFilter : undefined,
         search: search || undefined,
+        staff: staffFilter,
       },
       { page, pageSize }
     );
@@ -176,6 +193,7 @@ export default function TeachersManagement() {
         temporaryPassword: data.data.temporaryPassword,
         temporaryPasswordExpiresAt: data.data.temporaryPasswordExpiresAt,
       });
+      setRequestsVersion((v) => v + 1);
     } catch (err) {
       toast({
         title: "Error",
@@ -286,6 +304,11 @@ export default function TeachersManagement() {
               </Tooltip>
             </TooltipProvider>
           </div>
+          <Button variant="outline" className="shrink-0" onClick={() => setAddExistingOpen(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Add existing staff</span>
+            <span className="sm:hidden">Existing</span>
+          </Button>
           <Button className="shrink-0" asChild>
             <Link href="/admin/teachers/new">
               <Plus className="h-4 w-4 mr-2" />
@@ -294,6 +317,10 @@ export default function TeachersManagement() {
           </Button>
         </div>
       </div>
+
+      {/* Requests waiting for the head/deputy (hidden when there are none) */}
+      <ResetRequestsList key={requestsVersion} basePath="/password-resets" onChanged={onResetRequests} />
+      <TransfersList key={`t-${requestsVersion}`} basePath="/transfers" onChanged={refetch} />
 
       {/* Main Content */}
       <Card className="flex flex-col h-[calc(100vh-12rem)]">
@@ -373,7 +400,22 @@ export default function TeachersManagement() {
               </Select>
             </div>
           </div>
-          <div className="lg:hidden mt-2">
+          <div className="lg:hidden mt-2 grid grid-cols-2 gap-2">
+            <Select
+              value={staffFilter}
+              onValueChange={(value) => {
+                setStaffFilter(value as StaffFilter);
+                setPage(1);
+              }}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current">Current staff</SelectItem>
+                <SelectItem value="joining">Joining (transfer waiting)</SelectItem>
+                <SelectItem value="former">Former staff</SelectItem>
+              </SelectContent>
+            </Select>
             <Select
               value={qualificationFilter}
               onValueChange={(value) => {
@@ -406,6 +448,21 @@ export default function TeachersManagement() {
 
           {/* ── Desktop filters — unchanged (peer focus-within shrink/grow) ── */}
           <div className="hidden lg:flex gap-3">
+            <Select
+              value={staffFilter}
+              onValueChange={(value) => {
+                setStaffFilter(value as StaffFilter);
+                setPage(1);
+              }}>
+              <SelectTrigger className="w-44 shrink-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current">Current staff</SelectItem>
+                <SelectItem value="joining">Joining (transfer waiting)</SelectItem>
+                <SelectItem value="former">Former staff</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="peer relative flex-1 min-w-0 transition-all duration-300 ease-in-out focus-within:flex-2">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
@@ -527,12 +584,16 @@ export default function TeachersManagement() {
                 <EmptyHeader>
                   <EmptyTitle>No teachers found</EmptyTitle>
                   <EmptyDescription>
-                    {search ||
-                    statusFilter !== "all" ||
-                    genderFilter !== "all" ||
-                    qualificationFilter !== "all"
-                      ? "Try adjusting your filters"
-                      : "Start by adding new teachers to the system"}
+                    {staffFilter === "former"
+                      ? "Nobody has left or transferred out yet"
+                      : staffFilter === "joining"
+                        ? "No transfers in are waiting"
+                        : search ||
+                            statusFilter !== "all" ||
+                            genderFilter !== "all" ||
+                            qualificationFilter !== "all"
+                          ? "Try adjusting your filters"
+                          : "Start by adding new teachers to the system"}
                   </EmptyDescription>
                 </EmptyHeader>
               </EmptyContent>
@@ -546,15 +607,24 @@ export default function TeachersManagement() {
                 setSheetTeacherId(teacher.id);
                 setSheetOpen(true);
               }}
-              onEdit={(teacher) => {
-                setSelectedTeacherId(teacher.id);
-                setEditDialogOpen(true);
-              }}
-              onDelete={handleDeleteClick}
+              // Former staff and people still joining can't be changed here.
+              onEdit={
+                staffFilter === "current"
+                  ? (teacher) => {
+                      setSelectedTeacherId(teacher.id);
+                      setEditDialogOpen(true);
+                    }
+                  : undefined
+              }
+              onDelete={staffFilter === "current" ? handleDeleteClick : undefined}
               onContact={(teacher) => {
                 window.location.href = `mailto:${teacher.user?.email}`;
               }}
-              onResetPassword={handleResetPasswordClick}
+              onResetPassword={staffFilter === "current" ? handleResetPasswordClick : undefined}
+              canResetPassword={(teacher) =>
+                (!!teacher.user?.id && openResetUserIds.has(teacher.user.id)) ||
+                (!!teacher.user?.hasDefaultPassword && !teacher.user?.lastLogin)
+              }
             />
           )}
         </CardContent>
@@ -635,6 +705,15 @@ export default function TeachersManagement() {
         }}
       />
 
+      <AddExistingStaffDialog
+        open={addExistingOpen}
+        onOpenChange={setAddExistingOpen}
+        onAdded={() => {
+          refetch();
+          setRequestsVersion((v) => v + 1);
+        }}
+      />
+
       <OneTimePasswordDialog
         issued={issuedPassword}
         reason="reset"
@@ -652,14 +731,25 @@ export default function TeachersManagement() {
               <AlertDialogTitle>Reset Password</AlertDialogTitle>
             </div>
             <AlertDialogDescription className="text-left pt-3">
-              This will reset{" "}
-              <span className="font-semibold">
-                {teacherToReset?.firstName} {teacherToReset?.lastName}
-              </span>
-              &apos;s password. A new one-time password will be shown to you once, to give
-              them in person or by phone (it is also sent by SMS if SMS is set up). They
-              must choose their own password when they log in, and their old password
-              stops working.
+              {teacherToReset?.user?.id && openResetUserIds.has(teacherToReset.user.id) ? (
+                <>
+                  <span className="font-semibold">
+                    {teacherToReset?.firstName} {teacherToReset?.lastName}
+                  </span>{" "}
+                  asked for a new password. Make sure it&apos;s really them first (in person or by
+                  phone).
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold">
+                    {teacherToReset?.firstName} {teacherToReset?.lastName}
+                  </span>{" "}
+                  hasn&apos;t signed in yet, so you can give them a new one-time password.
+                </>
+              )}{" "}
+              A new one-time password will be shown to you once, to give them in person or by
+              phone (it is also sent by SMS if SMS is set up). They must choose their own password
+              when they sign in, and their old password stops working.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

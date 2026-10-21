@@ -26,7 +26,7 @@ export const GET = withAuth(async (request: Request, user) => {
     // Note: timetableService already has authorization logic
     const result = await timetableService.getTeacherTimetable(teacherProfile.id, {
       userId: user.userId,
-      role: user.role as "ADMIN" | "HEAD_TEACHER" | "DEPUTY_HEAD" | "TEACHER" | "CLERK",
+      role: user.role as "ADMIN" | "HEAD_TEACHER" | "DEPUTY_HEAD" | "TEACHER" | "CLERK" | "FINANCE",
       teacherProfileId: teacherProfile.id,
     });
 

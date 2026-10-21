@@ -36,6 +36,7 @@ export const GET = withAuth(async (request: Request, user) => {
       gender?: Gender;
       qualification?: QualificationLevel;
       search?: string;
+      staff?: "current" | "former" | "joining";
     } = {};
     const status = searchParams.get("status");
     const gender = searchParams.get("gender");
@@ -46,6 +47,9 @@ export const GET = withAuth(async (request: Request, user) => {
     if (gender) filters.gender = gender as Gender;
     if (qualification) filters.qualification = qualification as QualificationLevel;
     if (search) filters.search = search;
+    // current staff (default), former staff, or people joining by transfer
+    const staff = searchParams.get("staff");
+    if (staff === "former" || staff === "joining") filters.staff = staff;
 
     /* ================= NON-PAGINATED MODE ================= */
     if (mode === "all") {

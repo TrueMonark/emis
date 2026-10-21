@@ -51,7 +51,7 @@ export class ClashError extends Error {
 // Use isHOD(userId) from position-helpers for HOD checks
 export interface ServiceContext {
   userId: string;
-  role: "ADMIN" | "HEAD_TEACHER" | "DEPUTY_HEAD" | "TEACHER" | "CLERK";
+  role: "ADMIN" | "HEAD_TEACHER" | "DEPUTY_HEAD" | "TEACHER" | "CLERK" | "FINANCE";
 }
 
 export interface CreateSecondaryTimetableInput {

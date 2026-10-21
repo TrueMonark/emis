@@ -9,6 +9,8 @@ import {
   schoolMembershipRepository,
   NO_SCHOOL_MESSAGE,
 } from "@/features/schools/schoolMembership.repository";
+import { officeRepository } from "@/features/offices/office.repository";
+import { parseSignInId } from "@school/shared/auth/sign-in-id";
 
 const rawJwtSecret = process.env.JWT_SECRET;
 if (!rawJwtSecret) {
@@ -17,8 +19,13 @@ if (!rawJwtSecret) {
 const JWT_SECRET: string = rawJwtSecret;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
+const INVALID_SIGN_IN = "Invalid email/mobile number or password";
+
 export interface LoginCredentials {
-  email: string;
+  /** Email address or mobile number (any common way of writing it) */
+  identifier?: string;
+  /** Older name for `identifier` */
+  email?: string;
   password: string;
 }
 
@@ -35,8 +42,19 @@ export interface AuthResponse {
       lastName: string;
       staffNumber: string;
     } | null;
+    /** Where the person works: a school, an education office, or both */
+    school?: { id: string; name: string; setupComplete: boolean } | null;
+    office?: OfficeSummary | null;
   };
   message?: string;
+}
+
+export interface OfficeSummary {
+  officeId: string;
+  officeName: string;
+  officeType: "HQ" | "PROVINCIAL" | "DISTRICT";
+  role: "OFFICE_HEAD" | "OFFICER";
+  title: string | null;
 }
 
 export interface JWTPayload {
@@ -57,15 +75,20 @@ export class AuthService {
    * Authenticate user with email and password
    */
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const { email, password } = credentials;
+    const { password } = credentials;
+    const signInId = parseSignInId(credentials.identifier ?? credentials.email ?? "");
 
-    // Find user by email
-    const user = await authRepository.findUserByEmail(email.toLowerCase());
+    // Find the account by email or by mobile number.
+    const user = !signInId
+      ? null
+      : signInId.kind === "email"
+        ? await authRepository.findUserByEmail(signInId.value)
+        : await authRepository.findUserByPhone(signInId.value);
 
     if (!user) {
       return {
         success: false,
-        message: "Invalid email or password",
+        message: INVALID_SIGN_IN,
       };
     }
 
@@ -90,7 +113,7 @@ export class AuthService {
     if (!isPasswordValid) {
       return {
         success: false,
-        message: "Invalid email or password",
+        message: INVALID_SIGN_IN,
       };
     }
 
@@ -109,9 +132,30 @@ export class AuthService {
 
     // The school they work in (their ACTIVE membership). Their role is the membership's role.
     const membership = await schoolMembershipRepository.findActiveForUser(user.id);
-    if (!membership) {
+    const office = await this.getOfficeSummary(user.id);
+    if (!membership && !office) {
       return { success: false, message: NO_SCHOOL_MESSAGE };
     }
+
+    // Education office staff with no school (Phase 4): they go to the office pages.
+    if (!membership && office) {
+      const token = this.generateToken({ userId: user.id, email: user.email, role: user.role as Role, permissions: [] });
+      await authRepository.updateLastLogin(user.id);
+      return {
+        success: true,
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role as Role,
+          hasDefaultPassword: user.hasDefaultPassword,
+          profile: null,
+          school: null,
+          office,
+        },
+      };
+    }
+    if (!membership) return { success: false, message: NO_SCHOOL_MESSAGE };
 
     // Profile and permissions are read in the school's context (row-level security).
     return runWithTenant({ schoolId: membership.schoolId, userId: user.id }, async () => {
@@ -153,9 +197,42 @@ export class AuthService {
                 staffNumber: profile.staffNumber,
               }
             : null,
+          school: {
+            id: membership.schoolId,
+            name: membership.school.name,
+            setupComplete: !!membership.school.setupCompletedAt,
+            feesEnabled: membership.school.feesEnabled,
+          },
+          office,
         },
       };
     });
+  }
+
+  /** The person's ACTIVE education office role, if any. */
+  async getOfficeSummary(userId: string): Promise<OfficeSummary | null> {
+    const m = await officeRepository.findActiveMembership(userId);
+    if (!m) return null;
+    return {
+      officeId: m.officeId,
+      officeName: m.office.name,
+      officeType: m.office.type,
+      role: m.role,
+      title: m.title,
+    };
+  }
+
+  /** A transfer to another school waiting for confirmation, if any. */
+  async getPendingTransfer(userId: string) {
+    const m = await schoolMembershipRepository.findPendingForUser(userId);
+    return m ? { schoolName: m.school.name, role: m.role, requestedAt: m.requestedAt } : null;
+  }
+
+  /** The person's school (ACTIVE membership), if any, for /api/auth/me. */
+  async getSchoolSummary(userId: string) {
+    const m = await schoolMembershipRepository.findActiveForUser(userId);
+    if (!m) return null;
+    return { id: m.schoolId, name: m.school.name, setupComplete: !!m.school.setupCompletedAt, feesEnabled: m.school.feesEnabled };
   }
 
   /**

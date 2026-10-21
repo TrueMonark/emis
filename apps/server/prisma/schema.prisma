@@ -11,6 +11,8 @@ datasource db {
 
 model AcademicYear {
   id                        String                     @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -32,6 +34,8 @@ model AcademicYear {
   timetableConfiguration    TimetableConfiguration?
   timetableSlots            TimetableSlot[]
 
+  fees                      Fee[]
+  feeDiscounts              FeeDiscount[]
   @@unique([schoolId, year])
   @@index([schoolId])
   @@map("academic_years")
@@ -39,6 +43,8 @@ model AcademicYear {
 
 model Term {
   id                      String                   @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -53,12 +59,14 @@ model Term {
   assessmentWindows       AssessmentWindow[]
   assessments             Assessment[]
   attendanceRecords       AttendanceRecord[]
+  specialClasses          SpecialClass[]
   classTimetables         ClassTimetable[]
   reportCards             ReportCard[]
   secondaryTimetables     SecondaryTimetable[]
   academicYear            AcademicYear             @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   timetableConfigurations TimetableConfiguration[]
 
+  fees                    Fee[]
   @@unique([academicYearId, termType])
   @@index([schoolId])
   @@map("terms")
@@ -70,6 +78,8 @@ model Term {
 /// across the code; screens call it "year level".
 model Grade {
   id                        String                     @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId                  String                     @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -98,6 +108,7 @@ model Grade {
   previousGrades            Grade[]                    @relation("GradeProgression")
   subjectPeriodRequirements SubjectPeriodRequirement[]
 
+  feeTargets   FeeTarget[]
   @@unique([schoolId, sequence])
   @@unique([schoolId, name])
   @@index([schoolId])
@@ -168,6 +179,8 @@ model SchoolPathway {
 
 model Class {
   id                        String                     @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -185,6 +198,7 @@ model Class {
   classSubjects             ClassSubject[]
   classTeacherAssignments   ClassTeacherAssignment[]
   registerCovers            RegisterCover[]
+  specialClasses            SpecialClass[]
   classTimetables           ClassTimetable[]
   grade                     Grade                      @relation(fields: [gradeId], references: [id], onDelete: Cascade)
   /// Optional: the pathway this class follows (O-level and A-level classes)
@@ -196,6 +210,7 @@ model Class {
   subjectTeacherAssignments SubjectTeacherAssignment[]
   timetableSlots            TimetableSlot[]
 
+  feeTargets                FeeTarget[]
   @@unique([schoolId, gradeId, name])
   @@index([gradeId, status])
   @@index([schoolId])
@@ -204,6 +219,8 @@ model Class {
 
 model Subject {
   id                        String                     @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -230,6 +247,7 @@ model Subject {
   teacherSubjects           TeacherSubject[]
   timetableSlots            TimetableSlot[]
 
+  specialClasses     SpecialClass[]
   @@unique([schoolId, code])
   @@index([departmentId])
   @@index([schoolId])
@@ -281,6 +299,8 @@ model Department {
 
 model Student {
   id                 String                    @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -308,6 +328,7 @@ model Student {
   deceasedParent     DeceasedParent?
   statusChangeReason String?
   attendanceRecords  AttendanceRecord[]
+  specialClassAttendance SpecialClassAttendance[]
   reportCards        ReportCard[]
   smsLogs            SMSLog[]
   assessmentResults  StudentAssessmentResult[]
@@ -315,6 +336,9 @@ model Student {
   studentGuardians   StudentGuardian[]
   promotions         StudentPromotion[]
 
+  feeCharges         FeeCharge[]
+  feeDiscounts       FeeDiscount[]
+  feePayments        FeePayment[]
   @@unique([schoolId, studentNumber])
   @@index([status])
   @@index([studentNumber])
@@ -372,6 +396,8 @@ model StudentGuardian {
 
 model StudentClassEnrollment {
   id              String           @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -435,12 +461,17 @@ model StudentPromotion {
 model User {
   id                    String           @id @default(cuid())
   email                 String           @unique
+  /// Mobile number for signing in, as +260XXXXXXXXX (unique: one account per number). Filled
+  /// from the teacher profile's phone when that number isn't already someone else's.
+  phone                 String?          @unique
   passwordHash          String
   role                  Role             @default(TEACHER)
   isActive              Boolean          @default(true)
   hasDefaultPassword    Boolean          @default(false)
   /// When a one-time password stops working. Null = no expiry (e.g. seeded demo accounts).
   temporaryPasswordExpiresAt DateTime?
+  /// Name shown for accounts without a teacher profile (education office staff)
+  displayName           String?
   lastLogin             DateTime?
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
@@ -449,6 +480,9 @@ model User {
   profile               TeacherProfile?
   userPermissions       UserPermission[] @relation("UserPermissions")
   schoolMemberships     SchoolMembership[]
+  officeMemberships     OfficeMembership[]
+  passwordResetRequests PasswordResetRequest[] @relation("ResetRequester")
+  handledResetRequests  PasswordResetRequest[] @relation("ResetHandler")
 
   @@index([email])
   @@index([role])
@@ -489,6 +523,8 @@ model TeacherProfile {
   permissionGrants          UserPermission[]           @relation("PermissionGrants")
   lessonLogs                LessonLog[]
   registerCovers            RegisterCover[]            @relation("RegisterCoverTeacher")
+  specialClasses            SpecialClass[]             @relation("SpecialClassTeacher")
+  specialClassMarks         SpecialClassAttendance[]   @relation("SpecialClassMarker")
 
   @@index([staffNumber])
   @@index([status])
@@ -545,6 +581,7 @@ model EducationOffice {
   parent    EducationOffice?    @relation("OfficeTree", fields: [parentId], references: [id])
   children  EducationOffice[]   @relation("OfficeTree")
   schools   School[]
+  memberships OfficeMembership[]
 
   @@index([parentId])
   @@index([type])
@@ -563,6 +600,12 @@ model School {
   agency           String?
   districtOfficeId String
   status           SchoolStatus     @default(ACTIVE)
+  /// When the head teacher finished the first-time setup (school details, academic year and
+  /// terms, year levels). Until then the school's pages are limited to the setup wizard.
+  setupCompletedAt DateTime?
+  /// School fees module (the Finance role and its pages). Always on for private schools; the
+  /// DEBS can switch it on for others (e.g. community schools charging PTA fees).
+  feesEnabled      Boolean          @default(false)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   districtOffice   EducationOffice  @relation(fields: [districtOfficeId], references: [id])
@@ -598,6 +641,15 @@ model School {
   reportCardSubjects         ReportCardSubject[]
   attendanceRecords          AttendanceRecord[]
   registerCovers             RegisterCover[]
+  specialClasses             SpecialClass[]
+  specialClassAttendance     SpecialClassAttendance[]
+  syncOperations             SyncOperation[]
+  fees                       Fee[]
+  feeTargets                 FeeTarget[]
+  feeInstalments             FeeInstalment[]
+  feeCharges                 FeeCharge[]
+  feeDiscounts               FeeDiscount[]
+  feePayments                FeePayment[]
   grades                     Grade[]
   schoolPathways             SchoolPathway[]
   userPermissions            UserPermission[]
@@ -621,6 +673,14 @@ model SchoolMembership {
   status      MembershipStatus @default(ACTIVE)
   startDate   DateTime         @default(now())
   endDate     DateTime?
+  /// Transfers (Phase 4b): who asked for this PENDING membership (the receiving school's head
+  /// or deputy, or the DEBS), and who confirmed it (the old school's head/deputy or the DEBS).
+  requestedById String?
+  requestedAt   DateTime?
+  confirmedById String?
+  confirmedAt   DateTime?
+  /// How the membership ended: TRANSFERRED (to another school) or LEFT
+  endReason     String?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -685,6 +745,8 @@ model TeacherDepartment {
 
 model ClassTeacherAssignment {
   id             String         @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -709,6 +771,8 @@ model ClassTeacherAssignment {
 
 model SubjectTeacherAssignment {
   id             String         @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -740,6 +804,8 @@ model SubjectTeacherAssignment {
 
 model ClassSubject {
   id                        String                     @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -795,6 +861,8 @@ model TimetableConfiguration {
 
 model TimetableSlot {
   id                String             @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -830,6 +898,8 @@ model TimetableSlot {
 
 model LessonLog {
   id              String         @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -974,6 +1044,8 @@ model SubjectPeriodRequirement {
 
 model Assessment {
   id             String                    @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -1027,6 +1099,8 @@ model AssessmentWindow {
 
 model StudentAssessmentResult {
   id            String     @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -1123,6 +1197,8 @@ model ReportCardSubject {
 
 model AttendanceRecord {
   id              String           @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -1159,6 +1235,8 @@ model AttendanceRecord {
 /// the daily register for that class on those dates only.
 model RegisterCover {
   id          String         @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version   Int @default(1)
   /// The school this row belongs to. Filled in by the database from the request's school;
   /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
   schoolId    String         @default(dbgenerated("current_setting('app.school_id'::text, true)"))
@@ -1469,6 +1547,9 @@ enum Role {
   DEPUTY_HEAD
   TEACHER
   CLERK
+  /// School fees and money only (bursar / accounts clerk); no teaching or learner records.
+  /// Only in schools with the fees module on (School.feesEnabled).
+  FINANCE
 }
 
 enum StaffStatus {
@@ -1604,4 +1685,428 @@ enum SMSProvider {
   CLICKSEND
   HTTPSMS
   SMS_GATEWAY
+}
+
+/// Phase 3c: every change to a syncable table, recorded by database triggers (so no code path
+/// can forget it). Phones ask "what changed since my cursor?". Deletes appear here as op DELETE —
+/// the row itself is gone, this line is its tombstone. Read-only for the app.
+model ChangeLog {
+  seq       BigInt   @id @default(autoincrement())
+  schoolId  String
+  /// Table name, e.g. "attendance_records"
+  entity    String
+  entityId  String
+  /// INSERT, UPDATE or DELETE
+  op        String
+  /// Transaction that made the change (pg_current_xact_id); the sync cursor is built on it
+  txid      BigInt
+  changedAt DateTime @default(now())
+  /// User who made the change (app.user_id), when known
+  changedBy String?
+
+  @@index([schoolId, txid, seq])
+  @@index([schoolId, entity, entityId])
+  @@map("change_log")
+}
+
+enum OfficeRole {
+  /// Runs the office: creates accounts below it (HQ → PEO → DEBS) and, at a district, schools
+  OFFICE_HEAD
+  /// Office staff: can see the office's schools and accounts
+  OFFICER
+}
+
+/// A person's role at an education office (HQ, provincial or district). Phase 4.
+/// At most one ACTIVE office membership per person (partial unique index in the migration).
+model OfficeMembership {
+  id        String           @id @default(cuid())
+  userId    String
+  officeId  String
+  role      OfficeRole
+  /// Job title shown on screens, e.g. "District Education Board Secretary"
+  title     String?
+  status    MembershipStatus @default(ACTIVE)
+  startDate DateTime         @default(now())
+  endDate   DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  office    EducationOffice  @relation(fields: [officeId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, officeId])
+  @@index([officeId, status])
+  @@map("office_memberships")
+}
+
+/// Who did what, for actions above the school or about accounts: schools and accounts created,
+/// setup finished, EMIS numbers changed, memberships ended, password resets. Never edited.
+model AuditLog {
+  id          String   @id @default(cuid())
+  at          DateTime @default(now())
+  actorUserId String?
+  /// e.g. SCHOOL_CREATED, ACCOUNT_CREATED, SETUP_COMPLETED
+  action      String
+  targetType  String
+  targetId    String?
+  /// The school / office the action concerns (for scoping who may read it)
+  schoolId    String?
+  officeId    String?
+  /// One readable line, e.g. "Created Kaliwe Heights Secondary School (EMIS 1234)"
+  summary     String
+  details     Json?
+
+  @@index([officeId, at])
+  @@index([schoolId, at])
+  @@index([actorUserId, at])
+  @@map("audit_log")
+}
+
+enum PasswordResetStatus {
+  /// Waiting for the head/deputy, DEBS, PEO or HQ to reset it (or turn it down)
+  OPEN
+  /// A one-time password was issued
+  RESOLVED
+  /// Turned down by the person handling it (e.g. they couldn't confirm who asked)
+  DECLINED
+}
+
+/// "Forgot password?" (Phase 4b): a request for a new one-time password, handled by the head
+/// teacher/deputy of the person's school, or the office above (see passwordReset.service.ts).
+/// Exactly one of handlerSchoolId / handlerOfficeId says who may handle it.
+model PasswordResetRequest {
+  id              String              @id @default(cuid())
+  userId          String
+  status          PasswordResetStatus @default(OPEN)
+  requestedAt     DateTime            @default(now())
+  /// The school whose head/deputy handle it (the person's own school)
+  handlerSchoolId String?
+  /// The office whose head handles it (DEBS, PEO or HQ)
+  handlerOfficeId String?
+  handledById     String?
+  handledAt       DateTime?
+  user            User                @relation("ResetRequester", fields: [userId], references: [id], onDelete: Cascade)
+  handledBy       User?               @relation("ResetHandler", fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([handlerSchoolId, status])
+  @@index([handlerOfficeId, status])
+  @@map("password_reset_requests")
+}
+
+enum SpecialClassStatus {
+  /// Asked for by the teacher, waiting for the HOD (or head/deputy)
+  PENDING
+  APPROVED
+  REJECTED
+  /// Withdrawn by the teacher, or called off after approval
+  CANCELLED
+}
+
+/// A lesson outside the timetable on a Saturday or Sunday (Phase 5, requested 18 October 2026).
+/// Attendance can't be taken on a weekend except here: the teacher who asked for the class takes
+/// its register, and only once the HOD of the subject's department (or the head/deputy) approved it.
+model SpecialClass {
+  id             String             @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version        Int                @default(1)
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId       String             @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school         School             @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  classId        String
+  class          Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subjectId      String
+  subject        Subject            @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  termId         String
+  term           Term               @relation(fields: [termId], references: [id], onDelete: Cascade)
+  /// The teacher who asked for it and teaches it
+  teacherId      String
+  teacher        TeacherProfile     @relation("SpecialClassTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  /// The day (UTC midnight, like attendance dates); always a Saturday or Sunday
+  date           DateTime
+  /// "08:00"
+  startTime      String
+  endTime        String
+  topic          String
+  venue          String?
+  reason         String?
+  status         SpecialClassStatus @default(PENDING)
+  /// The user who approved / turned it down, and when
+  decidedById    String?
+  decidedAt      DateTime?
+  decisionNote   String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  attendance     SpecialClassAttendance[]
+
+  @@index([schoolId])
+  @@index([classId, date])
+  @@index([teacherId, date])
+  @@index([status])
+  @@map("special_classes")
+}
+
+/// The register of one special (weekend) class: one row per learner.
+model SpecialClassAttendance {
+  id             String           @id @default(cuid())
+  /// Goes up by one on every change (database trigger); phones send the version they last saw.
+  version        Int              @default(1)
+  /// The school this row belongs to. Filled in by the database from the request's school;
+  /// row-level security only shows the current school's rows (see lib/db/tenant.ts).
+  schoolId       String           @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school         School           @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  specialClassId String
+  specialClass   SpecialClass     @relation(fields: [specialClassId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  status         AttendanceStatus
+  remarks        String?
+  markedById     String?
+  markedBy       TeacherProfile?  @relation("SpecialClassMarker", fields: [markedById], references: [id])
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([specialClassId, studentId])
+  @@index([schoolId])
+  @@index([studentId])
+  @@map("special_class_attendance")
+}
+
+/// Phone sync (Phase 5): every operation a phone sends, by its own id, so a resend after a
+/// dropped connection returns the first answer instead of applying it twice.
+model SyncOperation {
+  id         String   @id @default(cuid())
+  /// The school this row belongs to (from the request's school; row-level security).
+  schoolId   String   @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school     School   @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  userId     String
+  /// The id the phone gave the operation
+  opId       String
+  deviceId   String?
+  type       String
+  /// PROCESSING while it runs, then APPLIED or REJECTED
+  status     String
+  /// What the phone was told (the same answer is returned for a resend)
+  response   Json?
+  receivedAt DateTime @default(now())
+  finishedAt DateTime?
+
+  @@unique([schoolId, userId, opId])
+  @@index([schoolId])
+  @@index([userId, receivedAt])
+  @@map("sync_operations")
+}
+
+// =====================================================================
+// School fees (requested 19 October 2026). Amounts are whole ngwee (K1 = 100 ngwee) so sums are
+// exact. School-owned (row-level security). Only schools with School.feesEnabled use them.
+// =====================================================================
+
+enum FeeCategory {
+  TUITION
+  BOARDING
+  TRANSPORT
+  MEALS
+  EXAMINATION
+  UNIFORM
+  BOOKS
+  DEVELOPMENT
+  TRIP
+  EVENT
+  OTHER
+}
+
+/// Who a fee is charged to
+enum FeeTargetKind {
+  /// Every learner on a class list this academic year
+  ALL
+  /// Learners in the chosen year levels
+  YEAR_LEVELS
+  /// Learners in the chosen classes
+  CLASSES
+  /// Only the learners added one by one (e.g. who signed up for a trip)
+  LEARNERS
+}
+
+enum FeePaymentMethod {
+  CASH
+  BANK_DEPOSIT
+  BANK_TRANSFER
+  MOBILE_MONEY
+  CHEQUE
+  OTHER
+}
+
+enum FeePaymentStatus {
+  RECORDED
+  /// Cancelled (wrong entry, bounced cheque). Kept with the reason; never deleted.
+  VOIDED
+}
+
+enum FeeDiscountKind {
+  /// value = percent (1–100)
+  PERCENT
+  /// value = ngwee off each matching fee
+  AMOUNT
+}
+
+/// Something learners are charged: a term's tuition for a year level, a trip, exam fees…
+model Fee {
+  id             String         @id @default(cuid())
+  schoolId       String         @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school         School         @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  name           String
+  category       FeeCategory
+  description    String?
+  academicYearId String
+  academicYear   AcademicYear   @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  /// The term it's for (null: a one-off or whole-year charge)
+  termId         String?
+  term           Term?          @relation(fields: [termId], references: [id], onDelete: Restrict)
+  /// Per learner, in ngwee
+  amountNgwee    Int
+  /// When it must be paid in full (instalments, if any, set earlier dates for parts)
+  dueDate        DateTime
+  targetKind     FeeTargetKind
+  /// Optional (e.g. a trip): learners are added when they sign up, never automatically
+  optional       Boolean        @default(false)
+  /// No longer charged to new learners or listed by default; existing charges stay
+  archived       Boolean        @default(false)
+  createdById    String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  targets        FeeTarget[]
+  instalments    FeeInstalment[]
+  charges        FeeCharge[]
+  payments       FeePayment[]
+
+  @@index([schoolId])
+  @@index([academicYearId, termId])
+  @@map("fees")
+}
+
+/// The year levels or classes a fee is for (targetKind YEAR_LEVELS / CLASSES)
+model FeeTarget {
+  id       String  @id @default(cuid())
+  schoolId String  @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School  @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  feeId    String
+  fee      Fee     @relation(fields: [feeId], references: [id], onDelete: Cascade)
+  gradeId  String?
+  grade    Grade?  @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  classId  String?
+  class    Class?  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([feeId])
+  @@map("fee_targets")
+}
+
+/// A payment plan: parts of a fee due by set dates (percents add up to 100)
+model FeeInstalment {
+  id       String   @id @default(cuid())
+  schoolId String   @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School   @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  feeId    String
+  fee      Fee      @relation(fields: [feeId], references: [id], onDelete: Cascade)
+  label    String
+  dueDate  DateTime
+  percent  Int
+
+  @@index([schoolId])
+  @@index([feeId])
+  @@map("fee_instalments")
+}
+
+/// One learner owing one fee. amount = original − discount (discounts are recalculated when they change).
+model FeeCharge {
+  id             String   @id @default(cuid())
+  schoolId       String   @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school         School   @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  feeId          String
+  fee            Fee      @relation(fields: [feeId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  originalNgwee  Int
+  discountNgwee  Int      @default(0)
+  amountNgwee    Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([feeId, studentId])
+  @@index([schoolId])
+  @@index([studentId])
+  @@map("fee_charges")
+}
+
+/// A discount or bursary for a learner in an academic year, on some fee categories (none = all)
+model FeeDiscount {
+  id             String          @id @default(cuid())
+  schoolId       String          @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school         School          @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  studentId      String
+  student        Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  academicYearId String
+  academicYear   AcademicYear    @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  /// e.g. "Sibling discount", "Bursary: Lusaka Rotary Club"
+  name           String
+  kind           FeeDiscountKind
+  value          Int
+  /// The fee categories it applies to; empty = every fee
+  categories     FeeCategory[]
+  reason         String?
+  createdById    String?
+  createdAt      DateTime        @default(now())
+  /// Ended (no longer applies; charges are recalculated)
+  endedAt        DateTime?
+
+  @@index([schoolId])
+  @@index([studentId, academicYearId])
+  @@map("fee_discounts")
+}
+
+/// Money received for a learner. Numbered receipts; voided payments are kept.
+model FeePayment {
+  id            String           @id @default(cuid())
+  schoolId      String           @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school        School           @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  studentId     String
+  student       Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  /// e.g. "RCT-2026-000123", numbered per school and year
+  receiptNumber String
+  amountNgwee   Int
+  method        FeePaymentMethod
+  /// Bank slip / transfer reference, mobile money transaction id, cheque number
+  reference     String?
+  payerName     String?
+  /// The day the money was received
+  paidOn        DateTime
+  /// Paid towards this fee (e.g. a trip); otherwise it pays the oldest balances first
+  feeId         String?
+  fee           Fee?             @relation(fields: [feeId], references: [id], onDelete: Restrict)
+  notes         String?
+  status        FeePaymentStatus @default(RECORDED)
+  voidReason    String?
+  voidedById    String?
+  voidedAt      DateTime?
+  receivedById  String
+  /// MANUAL (recorded by finance staff). A future bank / mobile money gateway records its own.
+  source        String           @default("MANUAL")
+  createdAt     DateTime         @default(now())
+
+  @@unique([schoolId, receiptNumber])
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([paidOn])
+  @@map("fee_payments")
+}
+
+/// The last receipt number used, per school and year (taken with a row lock, so numbers never repeat)
+model FeeReceiptCounter {
+  schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  year     Int
+  last     Int    @default(0)
+
+  @@id([schoolId, year])
+  @@map("fee_receipt_counters")
 }

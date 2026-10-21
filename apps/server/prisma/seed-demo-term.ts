@@ -1,12 +1,14 @@
 /**
- * DEMO SEED: "Kaliwe Heights Secondary School" (fictional)
- * =========================================================
+ * DEMO SEED: "Cranes Secondary School" (fictional), with its education offices
+ * ===========================================================================
  * Adds one fictional school, with a believable school year of activity, for screen-recording
  * product demos and for testing pages with a full school's worth of data:
  *
+ *   - The office chain above it: a Lusaka District Education Board (DEBS) under the Lusaka
+ *     Provincial Education Office, with accounts at HQ, the PEO and the DEBS (Phase 4)
  *   - 2026 academic year, Terms 1 & 2 complete, Term 3 in progress (up to today)
- *   - 3 leadership staff + 18 teachers in 4 departments (4 HODs)
- *   - 8 classes (Form 1 A/B, Form 2 A/B, Grade 10 A/B, Grade 11 A, Grade 12 A), ~300 students
+ *   - 3 leadership staff + 30 teachers in 4 departments (4 HODs)
+ *   - 9 classes (Form 1 A/B/C, Form 2 A/B, Grade 10 A/B, Grade 11 A, Grade 12 A), ~300 students
  *   - Guardians, curriculum, teacher assignments, class teachers, rooms
  *   - CAT / Mid-term / End-of-term assessments with realistic marks (ECZ grades)
  *   - Daily attendance registers for every school day so far
@@ -25,8 +27,9 @@
  * real school in your local database. It refuses to run twice (the demo school already exists)
  * and refuses any database that isn't on this computer (like prisma/seed.ts).
  *
- * RUN (from apps/server, with DATABASE_URL pointing at a migrated LOCAL database):
- *     npx tsx prisma/seed-demo-term.ts
+ * RUN (with DATABASE_URL pointing at a migrated LOCAL database):
+ *     npm run db:seed:demo          (from the repo root or apps/server)
+ * To start again from an empty database, see docs/phases/demo-school-seed.md.
  *
  * Password for every demo account: DEMO_SEED_PASSWORD from apps/server/.env if set, otherwise a
  * random one printed at the end (no fixed, publicly known password in the code).
@@ -49,7 +52,7 @@ import type {
 // ───────────────────────────── helpers ─────────────────────────────
 
 // Deterministic random numbers, so every run produces the same school.
-let rngState = 20261010;
+let rngState = 20261018;
 function rand(): number {
   rngState |= 0;
   rngState = (rngState + 0x6d2b79f5) | 0;
@@ -122,11 +125,28 @@ const OCCUPATIONS = ["Teacher", "Nurse", "Farmer", "Marketeer", "Civil servant",
 const AREAS = ["Chilenje", "Kabulonga", "Matero", "Chelstone", "Kalingalinga", "Mtendere", "Woodlands", "Kabwata", "Libala", "Chawama", "Kaunda Square", "Avondale", "Emmasdale", "Olympia", "Northmead"];
 
 let phoneCounter = 1000;
-const fakePhone = () => `+26097${String(1000000 + phoneCounter++).slice(1)}`; // made-up demo numbers
-const DOMAIN = "kaliweheights.example";
+// Made-up demo numbers in the stored form (+260 + 9 digits), all different, so each demo account
+// can also sign in with its number. Never configure real SMS credentials on the demo database.
+const fakePhone = () => `+260970${String(phoneCounter++).padStart(6, "0")}`;
+const localPhone = (p: string) => `0${p.slice(4, 7)} ${p.slice(7, 10)} ${p.slice(10)}`;
+const DOMAIN = "cranes.example";
+const OFFICE_DOMAIN = "ministry.example";
 const PASSWORD = process.env.DEMO_SEED_PASSWORD || randomBytes(9).toString("base64url");
-const DEMO_SCHOOL_ID = "school-demo-kaliwe";
-const DEMO_SCHOOL_NAME = "Kaliwe Heights Secondary School";
+const DEMO_SCHOOL_ID = "school-demo-cranes";
+const DEMO_SCHOOL_NAME = "Cranes Secondary School";
+const DEMO_SCHOOL_SHORT = "Cranes SS";
+const DEMO_EMIS = "DEMO-CRN-0001";
+
+// The education offices above the demo school (Phase 4). HQ and the provinces come with the
+// migrations; the district office is added here (the official district list isn't loaded yet).
+const DEMO_DISTRICT = { id: "demo-district-lusaka", name: "Lusaka District Education Board", code: "DEBS-LUSAKA-DEMO", parentId: "office-prov-lusaka" };
+const OFFICE_STAFF = [
+  { officeId: "office-hq", role: "OFFICE_HEAD", email: `hq@${OFFICE_DOMAIN}`, name: "Bertha Mwanza", title: "Director, Planning and Information" },
+  { officeId: "office-hq", role: "OFFICER", email: `hq.officer@${OFFICE_DOMAIN}`, name: "Daniel Kaluba", title: "Data Officer" },
+  { officeId: "office-prov-lusaka", role: "OFFICE_HEAD", email: `peo.lusaka@${OFFICE_DOMAIN}`, name: "Richard Siame", title: "Provincial Education Officer" },
+  { officeId: DEMO_DISTRICT.id, role: "OFFICE_HEAD", email: `debs.lusaka@${OFFICE_DOMAIN}`, name: "Mirriam Chisanga", title: "District Education Board Secretary" },
+  { officeId: DEMO_DISTRICT.id, role: "OFFICER", email: `officer.lusaka@${OFFICE_DOMAIN}`, name: "Kondwani Shawa", title: "Planning Officer" },
+] as const;
 
 // ───────────────────────────── curriculum ─────────────────────────────
 
@@ -178,22 +198,23 @@ const GRADES = [
 ] as const;
 
 const CLASSES = [
-  { grade: "GRADE_8", name: "A", curriculum: FORM_CURRICULUM, admitted: 2026, size: 40 },
-  { grade: "GRADE_8", name: "B", curriculum: FORM_CURRICULUM, admitted: 2026, size: 38 },
-  { grade: "GRADE_9", name: "A", curriculum: FORM_CURRICULUM, admitted: 2025, size: 39 },
-  { grade: "GRADE_9", name: "B", curriculum: FORM_CURRICULUM, admitted: 2025, size: 37 },
-  { grade: "GRADE_10", name: "A", curriculum: G10_CURRICULUM, admitted: 2026, size: 38 },
-  { grade: "GRADE_10", name: "B", curriculum: G10_CURRICULUM, admitted: 2026, size: 36 },
-  { grade: "GRADE_11", name: "A", curriculum: G11_12_CURRICULUM, admitted: 2025, size: 35 },
-  { grade: "GRADE_12", name: "A", curriculum: G11_12_CURRICULUM, admitted: 2024, size: 34 },
+  { grade: "GRADE_8", name: "A", curriculum: FORM_CURRICULUM, admitted: 2026, size: 34 },
+  { grade: "GRADE_8", name: "B", curriculum: FORM_CURRICULUM, admitted: 2026, size: 34 },
+  { grade: "GRADE_8", name: "C", curriculum: FORM_CURRICULUM, admitted: 2026, size: 33 },
+  { grade: "GRADE_9", name: "A", curriculum: FORM_CURRICULUM, admitted: 2025, size: 34 },
+  { grade: "GRADE_9", name: "B", curriculum: FORM_CURRICULUM, admitted: 2025, size: 33 },
+  { grade: "GRADE_10", name: "A", curriculum: G10_CURRICULUM, admitted: 2026, size: 33 },
+  { grade: "GRADE_10", name: "B", curriculum: G10_CURRICULUM, admitted: 2026, size: 33 },
+  { grade: "GRADE_11", name: "A", curriculum: G11_12_CURRICULUM, admitted: 2025, size: 34 },
+  { grade: "GRADE_12", name: "A", curriculum: G11_12_CURRICULUM, admitted: 2024, size: 33 },
 ] as const;
 
 // Staff. `subjects[0]` is their main subject. maxLoad = teaching periods per week.
 const LEADERSHIP = [
   // The school administrator works as CLERK (data entry); ADMIN is no longer a school role.
-  { email: `admin@${DOMAIN}`, role: "CLERK", first: "Chipo", last: "Nkhoma", gender: "FEMALE", staff: "KHS-ADM-001", qual: "DEGREE", yrs: 11 },
-  { email: `head@${DOMAIN}`, role: "HEAD_TEACHER", first: "Joseph", last: "Mulenga", gender: "MALE", staff: "KHS-HT-001", qual: "MASTERS", yrs: 24 },
-  { email: `deputy@${DOMAIN}`, role: "DEPUTY_HEAD", first: "Ruth", last: "Tembo", gender: "FEMALE", staff: "KHS-DH-001", qual: "MASTERS", yrs: 19 },
+  { email: `admin@${DOMAIN}`, role: "CLERK", first: "Chipo", last: "Nkhoma", gender: "FEMALE", staff: "CSS-ADM-001", qual: "DEGREE", yrs: 11 },
+  { email: `head@${DOMAIN}`, role: "HEAD_TEACHER", first: "Joseph", last: "Mulenga", gender: "MALE", staff: "CSS-HT-001", qual: "MASTERS", yrs: 24 },
+  { email: `deputy@${DOMAIN}`, role: "DEPUTY_HEAD", first: "Ruth", last: "Tembo", gender: "FEMALE", staff: "CSS-DH-001", qual: "MASTERS", yrs: 19 },
 ] as const;
 
 const TEACHERS = [
@@ -215,11 +236,23 @@ const TEACHERS = [
   { key: "imuleya", email: `hod.business@${DOMAIN}`, first: "Isaac", last: "Muleya", gender: "MALE", subjects: ["COMP"], hodOf: "BUSTECH", maxLoad: 18, qual: "MASTERS", yrs: 14 },
   { key: "psimukonda", email: `precious.simukonda@${DOMAIN}`, first: "Precious", last: "Simukonda", gender: "FEMALE", subjects: ["COMP", "BUS"], maxLoad: 26, qual: "DEGREE", yrs: 5 },
   { key: "mkapembwa", email: `mutale.kapembwa@${DOMAIN}`, first: "Mutale", last: "Kapembwa", gender: "MALE", subjects: ["BUS", "COMP"], maxLoad: 26, qual: "DEGREE", yrs: 7 },
+  { key: "jlungu", email: `joyce.lungu@${DOMAIN}`, first: "Joyce", last: "Lungu", gender: "FEMALE", subjects: ["MATH"], maxLoad: 24, qual: "DEGREE", yrs: 2 },
+  { key: "skatongo", email: `samuel.katongo@${DOMAIN}`, first: "Samuel", last: "Katongo", gender: "MALE", subjects: ["MATH", "COMP"], maxLoad: 24, qual: "DIPLOMA", yrs: 6 },
+  { key: "hmvula", email: `hazel.mvula@${DOMAIN}`, first: "Hazel", last: "Mvula", gender: "FEMALE", subjects: ["BIO"], maxLoad: 24, qual: "DEGREE", yrs: 8 },
+  { key: "pnjobvu", email: `patrick.njobvu@${DOMAIN}`, first: "Patrick", last: "Njobvu", gender: "MALE", subjects: ["CHEM", "BIO"], maxLoad: 24, qual: "DEGREE", yrs: 4 },
+  { key: "tkunda", email: `towela.kunda@${DOMAIN}`, first: "Towela", last: "Kunda", gender: "FEMALE", subjects: ["PHY", "CHEM"], maxLoad: 24, qual: "MASTERS", yrs: 10 },
+  { key: "emoonga", email: `emmanuel.moonga@${DOMAIN}`, first: "Emmanuel", last: "Moonga", gender: "MALE", subjects: ["ENG"], maxLoad: 24, qual: "DEGREE", yrs: 5 },
+  { key: "imwansa", email: `inonge.mwansa@${DOMAIN}`, first: "Inonge", last: "Mwansa", gender: "FEMALE", subjects: ["LIT", "ENG"], maxLoad: 24, qual: "DEGREE", yrs: 7 },
+  { key: "wchola", email: `wezi.chola@${DOMAIN}`, first: "Wezi", last: "Chola", gender: "MALE", subjects: ["CIN"], maxLoad: 24, qual: "DIPLOMA", yrs: 12 },
+  { key: "nhaangala", email: `nchimunya.haangala@${DOMAIN}`, first: "Nchimunya", last: "Haangala", gender: "FEMALE", subjects: ["HIST", "RE"], maxLoad: 24, qual: "DEGREE", yrs: 9 },
+  { key: "lsichone", email: `lazarus.sichone@${DOMAIN}`, first: "Lazarus", last: "Sichone", gender: "MALE", subjects: ["GEO", "CIV"], maxLoad: 24, qual: "DEGREE", yrs: 3 },
+  { key: "dmazimba", email: `doris.mazimba@${DOMAIN}`, first: "Doris", last: "Mazimba", gender: "FEMALE", subjects: ["RE", "HIST"], maxLoad: 24, qual: "DIPLOMA", yrs: 15 },
+  { key: "nkaluba", email: `nathan.kaluba@${DOMAIN}`, first: "Nathan", last: "Kaluba", gender: "MALE", subjects: ["BUS"], maxLoad: 24, qual: "DEGREE", yrs: 4 },
 ] as const;
 
 // Class teachers (form tutors), by class label.
 const CLASS_TEACHERS: Record<string, string> = {
-  "GRADE_8-A": "lngoma", "GRADE_8-B": "msakala", "GRADE_9-A": "ebanda", "GRADE_9-B": "cdaka",
+  "GRADE_8-A": "lngoma", "GRADE_8-B": "msakala", "GRADE_8-C": "jlungu", "GRADE_9-A": "ebanda", "GRADE_9-B": "cdaka",
   "GRADE_10-A": "bchanda", "GRADE_10-B": "nsiame", "GRADE_11-A": "kzulu", "GRADE_12-A": "aphiri",
 };
 
@@ -270,14 +303,52 @@ async function main() {
   if (await systemPrisma.school.findUnique({ where: { id: DEMO_SCHOOL_ID } })) {
     throw new Error(
       `The demo school "${DEMO_SCHOOL_NAME}" is already in this database.\n` +
-        "To start it again from scratch, use a fresh database (run the migrations, then this script)."
+        "To start it again from scratch, wipe the database first (see docs/phases/demo-school-seed.md)."
     );
   }
 
-  // The demo school is its own school (district not yet assigned, like every school for now).
-  await systemPrisma.school.create({
-    data: { id: DEMO_SCHOOL_ID, name: DEMO_SCHOOL_NAME, category: "PUBLIC", districtOfficeId: "office-district-unassigned" },
+  // The district office above the demo school, and the school itself (registered, set up).
+  await systemPrisma.educationOffice.upsert({
+    where: { id: DEMO_DISTRICT.id },
+    update: {},
+    create: { id: DEMO_DISTRICT.id, type: "DISTRICT", name: DEMO_DISTRICT.name, code: DEMO_DISTRICT.code, parentId: DEMO_DISTRICT.parentId },
   });
+  await systemPrisma.school.create({
+    data: {
+      // A private school, so the school fees pages are on (finance office: bursar@cranes.example).
+      id: DEMO_SCHOOL_ID, name: DEMO_SCHOOL_NAME, emisNumber: DEMO_EMIS, emisStatus: "CONFIRMED", category: "PRIVATE", feesEnabled: true,
+      districtOfficeId: DEMO_DISTRICT.id, setupCompletedAt: new Date(),
+    },
+  });
+
+  // Education office accounts (HQ, the Lusaka PEO, the Lusaka DEBS): no school, office pages only.
+  const officeHash = await bcrypt.hash(PASSWORD, 10);
+  for (const o of OFFICE_STAFF) {
+    if (await systemPrisma.user.findUnique({ where: { email: o.email } })) {
+      throw new Error(`${o.email} already exists in this database. Use an empty database (see docs/phases/demo-school-seed.md).`);
+    }
+    await systemPrisma.user.create({
+      data: {
+        email: o.email, phone: fakePhone(), displayName: o.name, passwordHash: officeHash, hasDefaultPassword: false,
+        officeMemberships: { create: { officeId: o.officeId, role: o.role, title: o.title } },
+      },
+    });
+  }
+  const hqHead = await systemPrisma.user.findUniqueOrThrow({ where: { email: OFFICE_STAFF[0].email } });
+  const peoHead = await systemPrisma.user.findUniqueOrThrow({ where: { email: OFFICE_STAFF[2].email } });
+  const debsHead = await systemPrisma.user.findUniqueOrThrow({ where: { email: OFFICE_STAFF[3].email } });
+  // A few audit lines, as if the chain had been built from the office pages.
+  await systemPrisma.auditLog.createMany({
+    data: [
+      { at: d("2026-01-05"), actorUserId: hqHead.id, action: "ACCOUNT_CREATED", targetType: "ACCOUNT", officeId: "office-prov-lusaka", summary: `Created account for ${OFFICE_STAFF[2].name} (${OFFICE_STAFF[2].email}) as head of Lusaka Provincial Education Office` },
+      { at: d("2026-01-06"), actorUserId: peoHead.id, action: "OFFICE_CREATED", targetType: "OFFICE", targetId: DEMO_DISTRICT.id, officeId: DEMO_DISTRICT.id, summary: `Added ${DEMO_DISTRICT.name}` },
+      { at: d("2026-01-06"), actorUserId: peoHead.id, action: "ACCOUNT_CREATED", targetType: "ACCOUNT", officeId: DEMO_DISTRICT.id, summary: `Created account for ${OFFICE_STAFF[3].name} (${OFFICE_STAFF[3].email}) as head of ${DEMO_DISTRICT.name}` },
+      { at: d("2026-01-07"), actorUserId: debsHead.id, action: "SCHOOL_CREATED", targetType: "SCHOOL", targetId: DEMO_SCHOOL_ID, schoolId: DEMO_SCHOOL_ID, officeId: DEMO_DISTRICT.id, summary: `Registered ${DEMO_SCHOOL_NAME} (EMIS ${DEMO_EMIS}) with head teacher Joseph Mulenga` },
+      { at: d("2026-01-09"), actorUserId: null, action: "SETUP_COMPLETED", targetType: "SCHOOL", targetId: DEMO_SCHOOL_ID, schoolId: DEMO_SCHOOL_ID, summary: `${DEMO_SCHOOL_NAME} finished its first-time setup` },
+      { at: d("2026-01-12"), actorUserId: debsHead.id, action: "SCHOOL_UPDATED", targetType: "SCHOOL", targetId: DEMO_SCHOOL_ID, schoolId: DEMO_SCHOOL_ID, officeId: DEMO_DISTRICT.id, summary: `Confirmed the EMIS number of ${DEMO_SCHOOL_NAME} (${DEMO_EMIS})` },
+    ],
+  });
+  console.log(`✅ ${DEMO_DISTRICT.name} and ${OFFICE_STAFF.length} office accounts (HQ, PEO, DEBS)`);
 
   // Everything below runs inside the demo school, exactly like a request from its head teacher.
   await runWithTenant({ schoolId: DEMO_SCHOOL_ID, userId: null }, () => seedDemoSchool());
@@ -307,9 +378,9 @@ async function seedDemoSchool() {
 
   // ── School info settings
   const schoolInfo: Record<string, string> = {
-    name: "Kaliwe Heights Secondary School",
-    motto: "Knowledge, Integrity, Service",
-    address: "Plot 1147, Kaliwe Road",
+    name: DEMO_SCHOOL_NAME,
+    motto: "Soar Higher",
+    address: "Plot 22, Cranes Close, off Great East Road",
     city: "Lusaka",
     province: "Lusaka Province",
     postalCode: "10101",
@@ -321,7 +392,7 @@ async function seedDemoSchool() {
     foundedYear: "1998",
     studentCapacity: "450",
     schoolType: "Secondary",
-    registrationNumber: "DEMO-0001",
+    registrationNumber: DEMO_EMIS,
     logoFilename: "demo-school-logo.png",
   };
   for (const [key, value] of Object.entries(schoolInfo)) {
@@ -391,11 +462,14 @@ async function seedDemoSchool() {
   const makeDob = (yrs: number) => d(`${1998 - yrs - randInt(0, 6)}-${String(randInt(1, 12)).padStart(2, "0")}-${String(randInt(1, 28)).padStart(2, "0")}`);
   const userIdByKey: Record<string, string> = {};
   const profileIdByKey: Record<string, string> = {};
+  const phoneByKey: Record<string, string> = {};
   const staffForPrompt: string[] = [];
 
   async function createStaff(key: string, email: string, role: string, first: string, last: string, gender: string, staffNumber: string, qual: string, yrs: number) {
+    // Made-up number, unique, so every demo account can also sign in with its mobile number.
+    const phone = fakePhone();
     const user = await prisma.user.create({
-      data: { email, passwordHash, role: role as Role, isActive: true, hasDefaultPassword: false, lastLogin: atTime(TODAY, 7, randInt(0, 50)) },
+      data: { email, phone, passwordHash, role: role as Role, isActive: true, hasDefaultPassword: false, lastLogin: atTime(TODAY, 7, randInt(0, 50)) },
     });
     // Their role at the demo school. The membership comes first: the school can only see the
     // profiles of its own members.
@@ -403,12 +477,13 @@ async function seedDemoSchool() {
     const profile = await prisma.teacherProfile.create({
       data: {
         userId: user.id, staffNumber, firstName: first, lastName: last, dateOfBirth: makeDob(yrs), gender: gender as Gender,
-        phone: fakePhone(), address: `${pick(AREAS)}, Lusaka`, qualification: qual as QualificationLevel, yearsExperience: yrs,
+        phone, address: `${pick(AREAS)}, Lusaka`, qualification: qual as QualificationLevel, yearsExperience: yrs,
         hireDate: d(`${Math.max(2005, YEAR - Math.min(yrs, 12))}-01-10`),
       },
     });
     userIdByKey[key] = user.id;
     profileIdByKey[key] = profile.id;
+    phoneByKey[key] = phone;
     staffForPrompt.push(`${email}`);
   }
 
@@ -418,7 +493,7 @@ async function seedDemoSchool() {
     await createStaff(key, l.email, l.role, l.first, l.last, l.gender, l.staff, l.qual, l.yrs);
   }
   for (const [i, t] of TEACHERS.entries()) {
-    await createStaff(t.key, t.email, "TEACHER", t.first, t.last, t.gender, `KHS-TCH-${String(i + 1).padStart(3, "0")}`, t.qual, t.yrs);
+    await createStaff(t.key, t.email, "TEACHER", t.first, t.last, t.gender, `CSS-TCH-${String(i + 1).padStart(3, "0")}`, t.qual, t.yrs);
     // subjects: first = PRIMARY, second = SECONDARY
     for (const [j, code] of t.subjects.entries()) {
       await prisma.teacherSubject.create({ data: { teacherId: profileIdByKey[t.key], subjectId: subjectIds[code], role: j === 0 ? "PRIMARY" : "SECONDARY" } });
@@ -434,11 +509,11 @@ async function seedDemoSchool() {
       });
     }
   }
-  console.log(`✅ ${LEADERSHIP.length + TEACHERS.length} staff accounts, 4 departments with HODs, ${SUBJECTS.length} subjects`);
+  console.log(`✅ ${LEADERSHIP.length + TEACHERS.length} staff accounts (${TEACHERS.length} teachers), 4 departments with HODs, ${SUBJECTS.length} subjects`);
 
   // ── Rooms
   const roomRows = [
-    ...CLASSES.map((c, i) => ({ name: `Classroom ${i + 1}`, code: `CR${i + 1}`, type: "REGULAR_CLASSROOM", capacity: 45, building: i < 4 ? "Block A" : "Block B" })),
+    ...CLASSES.map((c, i) => ({ name: `Classroom ${i + 1}`, code: `CR${i + 1}`, type: "REGULAR_CLASSROOM", capacity: 45, building: i < 5 ? "Block A" : "Block B" })),
     { name: "Science Laboratory", code: "LAB1", type: "SCIENCE_LAB", capacity: 40, building: "Science Block" },
     { name: "Computer Laboratory", code: "ICT1", type: "COMPUTER_LAB", capacity: 40, building: "Science Block" },
     { name: "Library", code: "LIB", type: "LIBRARY", capacity: 60, building: "Main Block" },
@@ -784,18 +859,202 @@ async function seedDemoSchool() {
   }
   const firstName = (s: StudentInfo) => s.name.split(" ")[0];
   for (const s of primaryGuardians.values()) {
-    addSms(s, `Kaliwe Heights SS: Term 2 report cards for ${firstName(s)} are ready. Please collect them from the class teacher. Thank you.`, atTime(d("2026-08-06"), 14, 5));
-    addSms(s, `Kaliwe Heights SS: Term 3 opens on Monday 7 September 2026. Learners must report by 07:15 in full uniform.`, atTime(d("2026-09-03"), 10, 0));
-    if (d("2026-10-01") <= TODAY) addSms(s, `Kaliwe Heights SS: Parents/Guardians are invited to a PTA meeting on Saturday 10 October 2026 at 09:00 in the school hall.`, atTime(d("2026-10-01"), 11, 30));
+    addSms(s, `${DEMO_SCHOOL_SHORT}: Term 2 report cards for ${firstName(s)} are ready. Please collect them from the class teacher. Thank you.`, atTime(d("2026-08-06"), 14, 5));
+    addSms(s, `${DEMO_SCHOOL_SHORT}: Term 3 opens on Monday 7 September 2026. Learners must report by 07:15 in full uniform.`, atTime(d("2026-09-03"), 10, 0));
+    if (d("2026-10-01") <= TODAY) addSms(s, `${DEMO_SCHOOL_SHORT}: Parents/Guardians are invited to a PTA meeting on Saturday 10 October 2026 at 09:00 in the school hall.`, atTime(d("2026-10-01"), 11, 30));
   }
   for (const [day, absentees] of Object.entries(absencesByDay)) {
     for (const s of absentees) {
       if (!chance(0.6)) continue;
-      addSms(s, `Kaliwe Heights SS: ${firstName(s)} was marked ABSENT today (${day}). Please contact the school if this is unexpected.`, atTime(d(day), 9, randInt(0, 40)));
+      addSms(s, `${DEMO_SCHOOL_SHORT}: ${firstName(s)} was marked ABSENT today (${day}). Please contact the school if this is unexpected.`, atTime(d(day), 9, randInt(0, 40)));
     }
   }
   for (const part of chunk(smsRows, 5000)) await prisma.sMSLog.createMany({ data: part });
   console.log(`✅ ${smsRows.length.toLocaleString()} SMS log entries (all simulated, nothing was actually sent)`);
+
+  // ── Weekend classes (Phase 5): one held last Saturday with its register, one approved for next
+  //    Saturday, and one waiting for the Maths HOD's approval.
+  {
+    const lastSat = new Date(TODAY.getTime() - ((TODAY.getUTCDay() + 1) % 7 || 7) * 86_400_000);
+    const nextSat = new Date(TODAY.getTime() + ((6 - TODAY.getUTCDay() + 7) % 7 || 7) * 86_400_000);
+    const t3Start = d(TERMS[2].start);
+    const t3End = d(TERMS[2].end);
+    const inTerm3 = (x: Date) => x >= t3Start && x <= t3End;
+    const ebandaLessons = classes.flatMap((c) => c.subjects.filter((s) => s.teacherKey === "ebanda").map((s) => ({ cls: c, code: s.code })));
+    const bchandaLessons = classes.flatMap((c) => c.subjects.filter((s) => s.teacherKey === "bchanda").map((s) => ({ cls: c, code: s.code })));
+    const make = (teacherKey: string, l: { cls: ClassInfo; code: SubjectCode }, date: Date, status: "APPROVED" | "PENDING", topic: string, start: string, end: string) =>
+      prisma.specialClass.create({
+        data: {
+          classId: l.cls.id, subjectId: subjectIds[l.code], termId: termIds["TERM_3"], teacherId: profileIdByKey[teacherKey],
+          date, startTime: start, endTime: end, topic, venue: "Classroom", reason: "Catching up before the end-of-term exams",
+          status, ...(status === "APPROVED" ? { decidedById: userIdByKey["pmwale"], decidedAt: new Date(date.getTime() - 3 * 86_400_000) } : {}),
+          createdAt: new Date(date.getTime() - 5 * 86_400_000),
+        },
+      });
+    let count = 0;
+    if (ebandaLessons[0] && inTerm3(lastSat)) {
+      const held = await make("ebanda", ebandaLessons[0], lastSat, "APPROVED", "Revision: simultaneous equations", "08:00", "10:00");
+      await prisma.specialClassAttendance.createMany({
+        data: studentsByClass[ebandaLessons[0].cls.id].map((st) => ({
+          specialClassId: held.id, studentId: st.id, status: (chance(0.85) ? "PRESENT" : "ABSENT") as AttendanceStatus, markedById: profileIdByKey["ebanda"],
+        })),
+      });
+      count++;
+    }
+    if (ebandaLessons[1] && inTerm3(nextSat)) {
+      await make("ebanda", ebandaLessons[1], nextSat, "APPROVED", "Past paper practice: Paper 2", "08:00", "10:30");
+      count++;
+    }
+    if (bchandaLessons[0] && inTerm3(nextSat)) {
+      await make("bchanda", bchandaLessons[0], nextSat, "PENDING", "Physics practical catch-up", "11:00", "12:30");
+      count++;
+    }
+    console.log(`✅ ${count} weekend classes (one with its register, one waiting for the HOD)`);
+  }
+
+  // ── School fees (private school): the bursar's account, term fees per year level, a PTA
+  //    levy, Grade 12 exam fees, a Form 2 trip (optional, sign-ups only), sports day, discounts
+  //    and bursaries, and a year of payments with receipts. All amounts are made up.
+  {
+    const { discountFor } = await import("@/features/fees/ledger");
+    const bursarPhone = fakePhone();
+    const bursar = await prisma.user.create({
+      data: { email: `bursar@${DOMAIN}`, phone: bursarPhone, displayName: "Memory Tembo", passwordHash, role: "FINANCE" as Role, isActive: true, hasDefaultPassword: false, lastLogin: atTime(TODAY, 7, 40) },
+    });
+    await systemPrisma.schoolMembership.create({ data: { userId: bursar.id, schoolId: DEMO_SCHOOL_ID, role: "FINANCE" as Role, status: "ACTIVE", startDate: d("2026-01-05") } });
+    phoneByKey["bursar"] = bursarPhone;
+
+    const K = (kwacha: number) => Math.round(kwacha * 100);
+    const TUITION: Record<string, number> = { GRADE_8: K(3500), GRADE_9: K(3500), GRADE_10: K(4200), GRADE_11: K(4200), GRADE_12: K(4800) };
+    const levels = [...new Set(classes.map((c) => c.gradeLevel))];
+    const studentsOfLevel = (lvl: string) => classes.filter((c) => c.gradeLevel === lvl).flatMap((c) => studentsByClass[c.id]);
+    type FeeSeed = { id: string; category: string; amount: number; due: Date; students: StudentInfo[]; instalments: { due: Date; percent: number }[]; earmarked: boolean };
+    const feesMade: FeeSeed[] = [];
+    const addDays = (x: Date, n: number) => new Date(x.getTime() + n * 86_400_000);
+
+    async function makeFee(f: {
+      name: string; category: string; termKey: string | null; amount: number; due: Date; targetKind: string;
+      gradeLevels?: string[]; optional?: boolean; students: StudentInfo[]; instalments?: { label: string; due: Date; percent: number }[]; description?: string; earmarked?: boolean;
+    }) {
+      const fee = await prisma.fee.create({
+        data: {
+          name: f.name, category: f.category as never, description: f.description ?? null, academicYearId: year.id, termId: f.termKey ? termIds[f.termKey] : null,
+          amountNgwee: f.amount, dueDate: f.due, targetKind: f.targetKind as never, optional: f.optional ?? false, createdById: bursar.id,
+          createdAt: addDays(f.due, -28),
+          targets: f.gradeLevels ? { create: f.gradeLevels.map((lvl) => ({ gradeId: gradeIds[lvl] })) } : undefined,
+          instalments: f.instalments ? { create: f.instalments.map((i) => ({ label: i.label, dueDate: i.due, percent: i.percent })) } : undefined,
+        },
+      });
+      feesMade.push({ id: fee.id, category: f.category, amount: f.amount, due: f.due, students: f.students, instalments: (f.instalments ?? []).map((i) => ({ due: i.due, percent: i.percent })), earmarked: !!f.earmarked });
+      return fee;
+    }
+
+    for (const t of TERMS) {
+      const n = termNumber(t.type);
+      const start = d(t.start);
+      for (const lvl of levels) {
+        const gradeName = GRADES.find((g) => g.level === lvl)!.name;
+        await makeFee({
+          name: `Term ${n} ${YEAR} tuition – ${gradeName}`, category: "TUITION", termKey: t.type, amount: TUITION[lvl], due: addDays(start, 14),
+          targetKind: "YEAR_LEVELS", gradeLevels: [lvl], students: studentsOfLevel(lvl),
+          // Term 3 can be paid in two parts.
+          instalments: n === "3" ? [{ label: "First part", due: addDays(start, 14), percent: 60 }, { label: "Second part", due: addDays(start, 49), percent: 40 }] : undefined,
+        });
+      }
+    }
+    await makeFee({ name: `PTA / development levy ${YEAR}`, category: "DEVELOPMENT", termKey: null, amount: K(500), due: d("2026-02-13"), targetKind: "ALL", students });
+    await makeFee({ name: `ECZ examination fees ${YEAR} – Grade 12`, category: "EXAMINATION", termKey: "TERM_2", amount: K(850), due: d("2026-06-30"), targetKind: "YEAR_LEVELS", gradeLevels: ["GRADE_12"], students: studentsOfLevel("GRADE_12") });
+    const form2 = studentsOfLevel("GRADE_9");
+    await makeFee({
+      name: "Form 2 educational trip to Livingstone", category: "TRIP", termKey: "TERM_3", amount: K(1200), due: d("2026-09-25"), targetKind: "YEAR_LEVELS", gradeLevels: ["GRADE_9"],
+      optional: true, students: form2.filter(() => chance(0.65)), description: "Victoria Falls, the Livingstone Museum and Mosi-oa-Tunya park. Leaving Friday 2 October, back Sunday 4 October.", earmarked: true,
+    });
+    await makeFee({ name: "Sports day 2026 (T-shirt and lunch)", category: "EVENT", termKey: "TERM_3", amount: K(150), due: d("2026-10-09"), targetKind: "ALL", students });
+
+    // Discounts: siblings get 10% off tuition (all but the eldest), a few bursaries.
+    type DiscountSeed = { studentId: string; kind: "PERCENT" | "AMOUNT"; value: number; categories: string[] };
+    const discounts: DiscountSeed[] = [];
+    const discountRows: Prisma.FeeDiscountCreateManyInput[] = [];
+    const byGuardian = new Map<string, StudentInfo[]>();
+    for (const st of students) byGuardian.set(st.guardianId, [...(byGuardian.get(st.guardianId) ?? []), st]);
+    for (const kids of byGuardian.values()) {
+      for (const kid of kids.slice(1)) {
+        discounts.push({ studentId: kid.id, kind: "PERCENT", value: 10, categories: ["TUITION"] });
+        discountRows.push({ studentId: kid.id, academicYearId: year.id, name: "Sibling discount", kind: "PERCENT", value: 10, categories: ["TUITION"], reason: "Second child in the school", createdById: bursar.id, createdAt: d("2026-01-12") });
+      }
+    }
+    const bursaryKids = [...students].sort(() => rand() - 0.5).slice(0, 5);
+    bursaryKids.forEach((kid, i) => {
+      const full = i === 0;
+      const value = full ? 100 : 50;
+      discounts.push({ studentId: kid.id, kind: "PERCENT", value, categories: ["TUITION"] });
+      discountRows.push({
+        studentId: kid.id, academicYearId: year.id, name: full ? "Full bursary: Cranes Old Pupils' Fund" : "Half bursary: Lusaka Rotary Club",
+        kind: "PERCENT", value, categories: ["TUITION"], reason: "Approved by the head teacher", createdById: bursar.id, createdAt: d("2026-01-14"),
+      });
+    });
+    await prisma.feeDiscount.createMany({ data: discountRows as never });
+
+    // Charges (fee less the learner's discounts).
+    const chargeRows: Prisma.FeeChargeCreateManyInput[] = [];
+    const chargesByStudent = new Map<string, { feeId: string; amount: number; due: Date; earmarked: boolean }[]>();
+    for (const f of feesMade) {
+      for (const st of f.students) {
+        const off = discountFor(f.amount, f.category, discounts.filter((x) => x.studentId === st.id));
+        chargeRows.push({ feeId: f.id, studentId: st.id, originalNgwee: f.amount, discountNgwee: off, amountNgwee: f.amount - off, createdAt: addDays(f.due, -28) });
+        // With a payment plan, families start paying from the first part's date.
+        chargesByStudent.set(st.id, [...(chargesByStudent.get(st.id) ?? []), { feeId: f.id, amount: f.amount - off, due: f.instalments.length ? f.instalments[0].due : f.due, earmarked: f.earmarked }]);
+      }
+    }
+    for (const part of chunk(chargeRows, 5000)) await prisma.feeCharge.createMany({ data: part as never });
+
+    // Payments: most families pay on time, some part-pay, a few fall behind.
+    const METHODS = [["MOBILE_MONEY", 0.4], ["BANK_DEPOSIT", 0.3], ["CASH", 0.25], ["BANK_TRANSFER", 0.05]] as const;
+    const pickMethod = () => {
+      let r = rand();
+      for (const [m, p] of METHODS) if ((r -= p) < 0) return m;
+      return "CASH";
+    };
+    const refFor = (m: string) =>
+      m === "MOBILE_MONEY" ? `MP26${String(randInt(10000000, 99999999))}` : m === "BANK_DEPOSIT" ? `DEP-${randInt(100000, 999999)}` : m === "BANK_TRANSFER" ? `TRF${randInt(1000000, 9999999)}` : null;
+    type PaySeed = { studentId: string; amount: number; paidOn: Date; feeId: string | null; method: string; payer: string };
+    const pays: PaySeed[] = [];
+    const guardianName = new Map<string, string>();
+    for (const g of await prisma.guardian.findMany({ select: { id: true, firstName: true, lastName: true } })) guardianName.set(g.id, `${g.firstName} ${g.lastName}`);
+    for (const st of students) {
+      const habit = rand(); // < 0.6 pays in full, < 0.88 part-pays, otherwise behind
+      for (const c of chargesByStudent.get(st.id) ?? []) {
+        if (c.amount <= 0 || c.due > addDays(TODAY, 10)) continue;
+        const share = habit < 0.6 ? 1 : habit < 0.88 ? 0.4 + rand() * 0.5 : chance(0.5) ? 0.2 + rand() * 0.3 : 0;
+        let left = Math.round((c.amount * share) / 1000) * 1000; // round to K10
+        if (share === 1) left = c.amount;
+        const parts = left > K(2000) && chance(0.4) ? 2 : 1;
+        for (let i = 0; i < parts && left > 0; i++) {
+          const amount = i === parts - 1 ? left : Math.round(left / 2 / 1000) * 1000;
+          left -= amount;
+          let when = addDays(c.due, randInt(-18, 25) + i * 21);
+          if (when > TODAY) when = TODAY;
+          if (when < d("2026-01-05")) when = d("2026-01-05");
+          pays.push({ studentId: st.id, amount, paidOn: when, feeId: c.earmarked ? c.feeId : null, method: pickMethod(), payer: guardianName.get(st.guardianId) ?? "" });
+        }
+      }
+    }
+    pays.sort((a, b) => a.paidOn.getTime() - b.paidOn.getTime());
+    const payRows: Prisma.FeePaymentCreateManyInput[] = pays.map((p, i) => ({
+      studentId: p.studentId, receiptNumber: `RCT-${YEAR}-${String(i + 1).padStart(6, "0")}`, amountNgwee: p.amount, method: p.method as never,
+      reference: refFor(p.method), payerName: p.payer, paidOn: p.paidOn, feeId: p.feeId, receivedById: bursar.id, createdAt: atTime(p.paidOn, 9, randInt(0, 400)),
+    }));
+    // One mistake, cancelled with a reason (it stays in the receipt book).
+    if (payRows.length > 10) {
+      const wrong = payRows[Math.floor(payRows.length / 2)];
+      Object.assign(wrong, { status: "VOIDED", voidReason: "Typed K15,000 instead of K1,500; re-entered on the next receipt", voidedById: bursar.id, voidedAt: atTime(wrong.paidOn as Date, 11) });
+    }
+    for (const part of chunk(payRows, 5000)) await prisma.feePayment.createMany({ data: part as never });
+    await prisma.$executeRaw`INSERT INTO "fee_receipt_counters" ("year", "last") VALUES (${YEAR}, ${payRows.length})`;
+    const collected = payRows.filter((p) => p.status !== "VOIDED").reduce((s2, p) => s2 + (p.amountNgwee as number), 0);
+    const charged = chargeRows.reduce((s2, c) => s2 + (c.amountNgwee as number), 0);
+    console.log(`✅ School fees: ${feesMade.length} fees, ${chargeRows.length.toLocaleString()} charges, ${discountRows.length} discounts/bursaries, ${payRows.length.toLocaleString()} receipts (K${Math.round(collected / 100).toLocaleString("en-GB")} of K${Math.round(charged / 100).toLocaleString("en-GB")} collected)`);
+  }
 
   // ── Staff notifications
   const notes: Prisma.NotificationCreateManyInput[] = [];
@@ -824,13 +1083,23 @@ async function seedDemoSchool() {
 🎉 Demo school ready!
 
    Log in with password: ${PASSWORD}${process.env.DEMO_SEED_PASSWORD ? "  (DEMO_SEED_PASSWORD)" : "  (random — note it down)"}
+   Every account can also sign in with its (made-up) mobile number.
    ─────────────────────────────────────────────
-   Head teacher ..... head@${DOMAIN}
+   Education offices
+   HQ (head) ........ ${OFFICE_STAFF[0].email}
+   HQ (officer) ..... ${OFFICE_STAFF[1].email}
+   PEO Lusaka ....... ${OFFICE_STAFF[2].email}
+   DEBS Lusaka ...... ${OFFICE_STAFF[3].email}
+   DEBS officer ..... ${OFFICE_STAFF[4].email}
+   ─────────────────────────────────────────────
+   ${DEMO_SCHOOL_NAME}
+   Head teacher ..... head@${DOMAIN}   (or mobile ${localPhone(phoneByKey["HEAD_TEACHER"])})
    Deputy head ...... deputy@${DOMAIN}
    Clerk (admin) .... admin@${DOMAIN}
    HOD (Maths/Sci) .. hod.maths@${DOMAIN}
    HOD (Languages) .. hod.languages@${DOMAIN}
-   Teacher .......... teacher@${DOMAIN}   (Esther Banda, Maths, class teacher of Form 2 A)
+   Finance (bursar) . bursar@${DOMAIN}   (school fees pages only; mobile ${localPhone(phoneByKey["bursar"])})
+   Teacher .......... teacher@${DOMAIN}   (Esther Banda, Maths, class teacher of Form 2 A; mobile ${localPhone(phoneByKey["ebanda"])})
    ─────────────────────────────────────────────
    Live demo idea: Head teacher → Report Cards → Term 2 → Grade 12 A → Bulk Generate.
 `);

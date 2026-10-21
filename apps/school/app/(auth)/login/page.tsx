@@ -23,7 +23,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getRoleRoute } from "@/lib/auth/role-routes";
+import { homeRouteFor } from "@/lib/auth/home-route";
 import { MonarkDevsCredit } from "@/components/layout/monark-devs-credit";
 import { Role } from "@school/shared/types/prisma-enums";
 
@@ -46,7 +46,7 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ identifier: email, password }),
       });
 
       const data = await response.json();
@@ -68,9 +68,7 @@ export default function LoginPage() {
 
       // Signed in with a one-time password: choose a new one first (the server refuses
       // everything else until then). Otherwise, go to the role's dashboard.
-      const roleRoute = data.data.user.hasDefaultPassword
-        ? "/change-password"
-        : getRoleRoute(data.data.user.role as Role);
+      const roleRoute = homeRouteFor(data.data.user);
       setTimeout(() => {
         router.push(roleRoute);
       }, 500);
@@ -121,15 +119,17 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* Email Field */}
+              {/* Email or mobile number */}
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">Email or mobile number</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="email"
-                    type="email"
-                    placeholder="teacher@school.zm"
+                    type="text"
+                    inputMode="email"
+                    autoComplete="username"
+                    placeholder="teacher@school.zm or 0977 123 456"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"

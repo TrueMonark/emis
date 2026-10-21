@@ -38,7 +38,7 @@ describe("auth/login", () => {
     expect(status).toBe(401);
     // Deliberately generic — doesn't say "wrong password" specifically,
     // which would confirm the email exists to an attacker.
-    expect(json.error).toBe("Invalid email or password");
+    expect(json.error).toBe("Invalid email/mobile number or password");
   });
 
   it("rejects malformed input with 400 before touching the database", async () => {

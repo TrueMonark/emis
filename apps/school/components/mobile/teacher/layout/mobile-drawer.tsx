@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Calendar, BarChart3, LogOut, Webhook, Building2 } from "lucide-react";
+import { Home, Calendar, BarChart3, LogOut, Webhook, Building2, CalendarPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -18,6 +18,7 @@ import { useHodStatus } from "@/hooks/useHodStatus";
 const drawerNavItems = [
   { title: "Dashboard", href: "/teacher", icon: Home, exact: true },
   { title: "Timetable", href: "/teacher/timetable", icon: Calendar },
+  { title: "Weekend classes", href: "/teacher/weekend-classes", icon: CalendarPlus },
   { title: "Reports", href: "/teacher/reports", icon: BarChart3 },
 ];
 

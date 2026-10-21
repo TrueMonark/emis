@@ -48,19 +48,56 @@ export async function resetDb(): Promise<void> {
     const tableList = tables.map((t) => `"${t.tablename}"`).join(", ");
     await systemPrisma.$executeRawUnsafe(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
   }
+  // Offices added by tests (the migration's national list has ids starting "office-").
+  await systemPrisma.$executeRawUnsafe(`DELETE FROM "education_offices" WHERE "id" NOT LIKE 'office-%'`);
 
   await createTestSchool({ id: TEST_SCHOOL_ID, name: "Test School A" });
   setTestFallbackTenant({ schoolId: TEST_SCHOOL_ID, userId: null });
 }
 
-/** Creates a school (global table, so via the system client). */
-export async function createTestSchool(options: { id?: string; name?: string } = {}) {
+/**
+ * Creates a school (global table, so via the system client). Set up already, unless
+ * `inSetup` — a school just registered by its district office.
+ */
+export async function createTestSchool(
+  options: { id?: string; name?: string; districtOfficeId?: string; inSetup?: boolean } = {}
+) {
   return systemPrisma.school.create({
     data: {
       id: options.id ?? `school-${crypto.randomUUID().slice(0, 8)}`,
       name: options.name ?? "Another Test School",
-      districtOfficeId: UNASSIGNED_DISTRICT_ID,
+      districtOfficeId: options.districtOfficeId ?? UNASSIGNED_DISTRICT_ID,
+      setupCompletedAt: options.inSetup ? null : new Date(),
     },
+  });
+}
+
+/**
+ * An education office account (Phase 4): a user with an ACTIVE office membership and no
+ * school. Offices are global; pass `officeId` (e.g. "office-hq", "office-prov-lusaka") or a
+ * district made with createTestDistrict.
+ */
+export async function createTestOfficeUser(
+  officeId: string,
+  options: { role?: "OFFICE_HEAD" | "OFFICER"; email?: string; password?: string } = {}
+) {
+  const password = options.password ?? TEST_PASSWORD;
+  const user = await systemPrisma.user.create({
+    data: {
+      email: options.email ?? `office-${crypto.randomUUID()}@example.com`,
+      passwordHash: await bcrypt.hash(password, 10),
+      displayName: "Test Officer",
+      officeMemberships: { create: { officeId, role: options.role ?? "OFFICE_HEAD" } },
+    },
+    include: { officeMemberships: true },
+  });
+  return { user, membership: user.officeMemberships[0], password };
+}
+
+/** A district office under a province (offices are global, so via the system client). */
+export async function createTestDistrict(parentId = "office-prov-lusaka", name = "Test District") {
+  return systemPrisma.educationOffice.create({
+    data: { type: "DISTRICT", name, parentId, code: `D-${crypto.randomUUID().slice(0, 6)}` },
   });
 }
 
@@ -112,7 +149,8 @@ export async function createTestUser(options: CreateTestUserOptions = {}) {
   }
 
   let teacherProfile = null;
-  if (role !== Role.CLERK) {
+  // Clerks and finance staff aren't teachers: no teacher profile.
+  if (role !== Role.CLERK && role !== Role.FINANCE) {
     // In the user's own school's context, so the new profile is visible to it.
     teacherProfile = await runWithTenant({ schoolId, userId: user.id }, () => prisma.teacherProfile.create({
       data: {

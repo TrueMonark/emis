@@ -31,7 +31,9 @@ server.js         all-in-one production entry: API + school app on one port
 docs/             background docs; docs/README.md says what's current vs archive
 ```
 
-Coming next: `apps/office/` (DEBS + PEO, one app, scope decides what you see).
+Education office pages (HQ, PEO, DEBS) live in `apps/school` under `app/(office)/office/`
+(decided when building Phase 4a: one sign-in page and one set of building blocks for everyone,
+instead of a separate `apps/office`). The school's first-time setup wizard is `app/(setup)/setup/`.
 
 - The screens never import server code. They talk to the API over HTTP through
   `apps/school/lib/api-client.ts`; in development the school app passes `/api/*` and `/uploads/*`
@@ -94,6 +96,88 @@ Coming next: `apps/office/` (DEBS + PEO, one app, scope decides what you see).
   (`@school/shared/auth/role-hierarchy`), never one specific leadership role. `ADMIN` is the
   old name for the head's account and is no longer given to anyone.
 
+## Education offices and the account chain (Phase 4a, since 2026-10-17)
+
+- **Office accounts** are a user with an ACTIVE `OfficeMembership` (`OFFICE_HEAD` or `OFFICER`)
+  at an `EducationOffice` (HQ → PROVINCIAL → DISTRICT), at most one active per person. They have
+  no school: `/api/office/*` routes run with `schoolId` null and `user.office` set by `withAuth`
+  (use `officeContextOf(user)`); every other route refuses an office-only account, and office
+  routes refuse school accounts.
+- **What each office may see and do** is decided in one place, `features/offices/office.service.ts`
+  (scope helpers + `canManageAccountsAt`). Never re-implement scope checks in a route or screen —
+  the screens only mirror them to hide buttons.
+- **A DEBS registers a school with its first head teacher** (one-time password). A new school
+  has `School.setupCompletedAt` null, and `withAuth` answers school routes outside
+  `SETUP_ALLOWED_PREFIXES` (`@school/shared/auth/school-setup`) with 403 `SCHOOL_SETUP_REQUIRED`
+  until the head finishes `/setup`. A new route a setup step needs must be added to that list.
+- **Audit log** (`audit_log`, `auditService.record`) for account, office and school-level
+  actions. The app can add and read lines, never change or delete them.
+- The first HQ account comes from `npm run office:create-account -- --email … --name "…"`
+  (`--reset` re-issues an office account's one-time password: the last resort for HQ heads).
+
+## Reset requests, phone sign-in and transfers (Phase 4b, since 2026-10-17)
+
+- **Sign-in takes an email or a mobile number** (`parseSignInId` / `normalizeZambianPhone` in
+  `@school/shared/auth/sign-in-id`). `User.phone` (+260XXXXXXXXX, unique) is set when an account
+  is created or a profile's phone changes, only if no other account uses that number
+  (`features/auth/sign-in-phone.ts`). Never make phone required or reassign a number in code.
+- **Nobody resets a password without a request.** "Forgot password?" (`POST /api/auth/forgot-password`,
+  public like login, rate-limited, same reply whether or not the account exists) creates a
+  `PasswordResetRequest` routed by `passwordReset.service.ts`: school staff → head/deputy;
+  head ↔ deputy; no other leader → DEBS; office staff → the office above (up the tree if it has
+  no head). Only the handler sees a "Reset password" button, and only while the request is open.
+  The Teachers page reset route works only for an open request or a never-used account. Don't
+  add any other reset path.
+- **Transfers** (`features/transfers/`): the new school asks (`PENDING` membership, at most one
+  per person), the old school's head/deputy or the office over the old school confirms; then the
+  old membership ends and the new one becomes ACTIVE in one transaction run in the **old**
+  school's context, releasing its class-teacher/subject assignments, HOD post, department and
+  subject links, and future register covers. Teacher profiles stay readable by former schools.
+- **Every list of a school's staff must say which staff.** Use `staffWhere()` /
+  `currentStaffWhere()` (`features/schools/schoolMembership.repository.ts`) on teacher-profile
+  queries; RLS alone also shows former staff (kept for history). Former staff are read-only
+  (`assertCurrentStaff` in `teacher.service.ts`).
+
+## Weekend classes and the phone sync API (Phase 5, since 2026-10-18)
+
+- **No attendance on a Saturday or Sunday** (`isWeekend` in `@school/shared/calendar/weekend`,
+  checked in `attendanceRecord.service.ts` for marking and correcting). The only weekend register
+  is a **special class** (`features/special-classes/`): the teacher asks, the HOD of the
+  subject's department approves (head/deputy as fallback; their own need no approval), and only
+  that teacher (or the head/deputy) takes its register, on or after the day. Its attendance is
+  `SpecialClassAttendance`, kept apart from `AttendanceRecord`, so it never affects the daily
+  register or report cards. Don't store weekend marks in `attendance_records`.
+- **Phone sync** (`features/sync/sync.service.ts` `PhoneSyncService`, routes `/api/sync/*`,
+  reference `docs/design/sync-api.md`): snapshot, changes (rows + tombstones, resync when the
+  scope fingerprint changes), push (operations, applied once per `opId` via `sync_operations`).
+  Operations call the **same services** as the web; add a new kind in `sync.operations.ts`, never
+  by writing tables from the sync code. What fields a phone gets is `syncRecords.repository.ts`
+  (minimum needed: no learner birth dates, addresses, medical or vulnerability details).
+
+## School fees (since 2026-10-19)
+
+- **On per school**: `School.feesEnabled` — always true for `PRIVATE` (set when the DEBS registers
+  or recategorises a school); the office can switch it on for others. Every `/api/finance/*`
+  service call starts with `financeAccess()` / `requireFinanceEditor()` (`features/fees/financeAccess.ts`):
+  role `FINANCE` edits, the head/deputy (`isSchoolLeader`) only view and print, everyone else 403.
+- **`FINANCE` is a non-teaching role** (no teacher profile). `withAuth` refuses a FINANCE account
+  every route outside `FINANCE_ALLOWED_PREFIXES` (`@school/shared/auth/finance-access`). A new
+  route finance staff need goes in that list. Finance staff accounts are made by the head/deputy
+  (`financeStaff.service.ts`, one-time password like every account).
+- **Money is whole ngwee (`Int`)**, never floats; format/parse with `@school/shared/fees/money`.
+- **Charges are rows (`FeeCharge`, one per learner per fee, amount = fee − discounts); payments
+  are not linked to charges.** How payments pay charges is computed every time by
+  `features/fees/ledger.ts` (earmarked fee first, then oldest due date, the rest is credit;
+  instalments decide what is overdue). Never store an allocation or a balance column.
+  A discount or fee amount change recalculates `FeeCharge` rows (`fee.service.ts`).
+- **Payments are never deleted or edited**: a wrong one is VOIDED with a reason (the app's DB role
+  has no DELETE on `fee_payments`). Receipt numbers (`RCT-YYYY-000001`) come from the row-locked
+  `fee_receipt_counters` upsert in `feesRepository.recordPayment` — don't number them in code.
+- `FeePayment.source` is `MANUAL`; a future bank/mobile-money gateway records payments through
+  the same service with its own source and provider reference (webhook route to be designed then).
+- Printouts are HTML print views under `app/(finance-print)/finance/print/*` plus client-side CSV
+  (`components/finance/csv.ts`); no server PDFs for fees.
+
 ## Year levels, curriculum and learner numbers (Phase 3b, since 2026-10-16)
 
 - **`Grade` is a school's own year level** ("Grade 8", "Form 1", "Reception", "16+"), with
@@ -111,6 +195,22 @@ Coming next: `apps/office/` (DEBS + PEO, one app, scope decides what you see).
 - **Learner number** (`Student.learnerNumber`, `ZM26-4K7Q2PB-H`) is made by the database
   (`emis_new_learner_number()`, column default). Never set or change it in code; validate typed
   numbers with `normalizeLearnerNumber`. The SQL and TS check-character rules must stay identical.
+
+## Offline-ready data (Phase 3c, since 2026-10-16)
+
+- 18 syncable tables (list: `SYNC_ENTITIES` in `features/sync/teacherScope.service.ts`) have a
+  `version` column raised by a database trigger on every real update, and every insert, update
+  and delete is written to `change_log` by a trigger (migration `20261016150000_phase3c_change_log`).
+  Code never writes either. A new syncable table needs the same two triggers, a `version`
+  column, and an entry in `SYNC_ENTITIES` and the teacher scope.
+- **Deletes stay hard deletes.** The change log's DELETE line is the tombstone; don't add
+  `deletedAt` to a table just for sync.
+- **The sync cursor is a transaction id + seq** (`changeLog.repository.ts`), served only below
+  the oldest running transaction. Never page the change log by `seq` alone: a long transaction
+  that commits late would be skipped.
+- What a teacher's phone may hold is `teacherScopeService` — extend it there, not per endpoint.
+  Anything that changes *which* rows are in scope (new class, cover, term) must be part of its
+  `fingerprint`, or phones won't know to download again.
 
 ## Stack
 
@@ -290,9 +390,9 @@ drift) was deleted 2026-07-09 for exactly this reason.
 - The seed (`prisma/seed.ts`) has no fixed passwords: it uses `SEED_DEMO_PASSWORD` or prints a
   random one, marks demo accounts `hasDefaultPassword`, and refuses non-local databases unless
   `SEED_ALLOW_REMOTE=true`. Keep it that way.
-- **Still planned (Phase 4):** the "Forgot password?" request flow through head/deputy → DEBS
-  (`docs/design/phase-3-foundation.md` §3b). Until then `/forgot-password` tells people to ask
-  their head teacher or deputy head, who resets from the Teachers page.
+- **Forgotten passwords** go through reset requests (Phase 4b, section above): the head/deputy
+  or the office above resets them from the request. The only public routes are
+  `/api/auth/login` and `/api/auth/forgot-password`.
 
 ## Server-side PDF generation
 

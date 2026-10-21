@@ -1,3 +1,4 @@
+import { SCHOOL_SETUP_REQUIRED, SCHOOL_SETUP_REQUIRED_HEADER } from "@school/shared/auth/school-setup";
 import {
   PASSWORD_CHANGE_REQUIRED,
   PASSWORD_CHANGE_REQUIRED_HEADER,
@@ -97,6 +98,18 @@ export class ApiResponse {
         code: PASSWORD_CHANGE_REQUIRED,
       },
       { status: 403, headers: { [PASSWORD_CHANGE_REQUIRED_HEADER]: "true" } }
+    );
+  }
+
+  /** The school is still in first-time setup (see @school/shared/auth/school-setup). */
+  static schoolSetupRequired(): Response {
+    return Response.json(
+      {
+        success: false,
+        error: "Your school's first-time setup isn't finished yet.",
+        code: SCHOOL_SETUP_REQUIRED,
+      },
+      { status: 403, headers: { [SCHOOL_SETUP_REQUIRED_HEADER]: "true" } }
     );
   }
 

@@ -13,6 +13,7 @@ export const ROLE_ROUTES: Record<Role, string> = {
   DEPUTY_HEAD: "/admin", // same screens and rights as the head teacher
   CLERK: "/admin",
   TEACHER: "/teacher",
+  FINANCE: "/finance", // school fees pages only
 };
 
 /**

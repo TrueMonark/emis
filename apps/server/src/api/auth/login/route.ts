@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
     // Targeted guard: caps attempts against one account regardless of source IP.
     const emailLimit = checkRateLimit(
-      `login:email:${validatedData.email.toLowerCase()}`,
+      `login:id:${validatedData.identifier}`,
       5,
       WINDOW_MS
     );

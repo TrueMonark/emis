@@ -1,3 +1,4 @@
+import { currentStaffWhere } from "@/features/schools/schoolMembership.repository";
 import prisma from "@/lib/db/prisma";
 import { Prisma } from "@prisma/client";
 
@@ -35,8 +36,8 @@ export class AdminDashboardService {
     ] = await Promise.all([
       prisma.student.count(),
       prisma.student.count({ where: { status: { in: ["ACTIVE", "SUSPENDED"] } } }),
-      prisma.teacherProfile.count(),
-      prisma.teacherProfile.count({ where: { status: "ACTIVE" } }),
+      prisma.teacherProfile.count({ where: currentStaffWhere() }),
+      prisma.teacherProfile.count({ where: { status: "ACTIVE", ...currentStaffWhere() } }),
       prisma.class.count(),
       prisma.class.count({ where: { status: "ACTIVE" } }),
       prisma.department.count(),
@@ -310,7 +311,7 @@ export class AdminDashboardService {
   }
 
   async getTeacherStats(departmentId?: string) {
-    const where: Prisma.TeacherProfileWhereInput = { deletedAt: null };
+    const where: Prisma.TeacherProfileWhereInput = { deletedAt: null, ...currentStaffWhere() };
     if (departmentId) {
       where.departments = { some: { departmentId } };
     }

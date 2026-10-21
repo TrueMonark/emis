@@ -38,6 +38,37 @@ export class AuthRepository {
     });
   }
 
+  /** Find user by mobile number (+260XXXXXXXXX), with profile data. */
+  async findUserByPhone(phone: string): Promise<UserWithProfile | null> {
+    return await prisma.user.findUnique({
+      where: { phone },
+      include: {
+        profile: {
+          select: {
+            id: true,
+            staffNumber: true,
+            firstName: true,
+            middleName: true,
+            lastName: true,
+            phone: true,
+            status: true,
+          },
+        },
+      },
+    });
+  }
+
+  /** The id of the account using this mobile number, if any. */
+  async findUserIdByPhone(phone: string): Promise<string | null> {
+    const user = await prisma.user.findUnique({ where: { phone }, select: { id: true } });
+    return user?.id ?? null;
+  }
+
+  /** Set (or clear) the mobile number someone signs in with. */
+  async setPhone(userId: string, phone: string | null): Promise<void> {
+    await prisma.user.update({ where: { id: userId }, data: { phone } });
+  }
+
   /**
    * Find user by ID with profile data
    */

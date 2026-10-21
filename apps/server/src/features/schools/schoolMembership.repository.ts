@@ -1,9 +1,41 @@
 import prisma from "@/lib/db/prisma";
+import type { Prisma } from "@prisma/client";
 import { Role } from "@school/shared/types/prisma-enums";
+import { requireSchoolId } from "@/lib/db/tenant";
+
+/**
+ * Which staff a list shows (Phase 4b). Teacher profiles of people who left or transferred stay
+ * visible to the school (history: who marked a register, who wrote a remark), so every list of
+ * staff must say which people it means. Default: current staff.
+ */
+export type StaffListFilter = "current" | "former" | "joining";
+
+const STAFF_STATUS: Record<StaffListFilter, "ACTIVE" | "ENDED" | "PENDING"> = {
+  current: "ACTIVE",
+  former: "ENDED",
+  joining: "PENDING",
+};
+
+/** Teacher profiles of the current school's staff in that state (current = ACTIVE members). */
+export function staffWhere(filter: StaffListFilter = "current"): Prisma.TeacherProfileWhereInput {
+  return {
+    user: { schoolMemberships: { some: { schoolId: requireSchoolId(), status: STAFF_STATUS[filter] } } },
+  };
+}
+
+/** Teacher profiles of the current school's ACTIVE staff. */
+export function currentStaffWhere(): Prisma.TeacherProfileWhereInput {
+  return staffWhere("current");
+}
 
 /** Shown when someone signs in (or calls the API) without an ACTIVE school membership. */
 export const NO_SCHOOL_MESSAGE =
   "Your account isn't linked to a school at the moment. Contact your head teacher or district office.";
+
+/** Shown when an education office account calls a school route (or the other way round). */
+export const OFFICE_ACCOUNT_MESSAGE =
+  "This account belongs to an education office. Use the office pages.";
+export const NOT_OFFICE_MESSAGE = "These pages are for education office staff.";
 
 /**
  * School memberships: a person's role at a school (global table — read before the school is
@@ -15,7 +47,20 @@ export class SchoolMembershipRepository {
   async findActiveForUser(userId: string) {
     return prisma.schoolMembership.findFirst({
       where: { userId, status: "ACTIVE", school: { status: "ACTIVE" } },
-      select: { id: true, schoolId: true, role: true },
+      select: {
+        id: true,
+        schoolId: true,
+        role: true,
+        school: { select: { name: true, setupCompletedAt: true, feesEnabled: true } },
+      },
+    });
+  }
+
+  /** The person's transfer waiting for confirmation, if any. */
+  async findPendingForUser(userId: string) {
+    return prisma.schoolMembership.findFirst({
+      where: { userId, status: "PENDING" },
+      select: { role: true, requestedAt: true, school: { select: { name: true } } },
     });
   }
 

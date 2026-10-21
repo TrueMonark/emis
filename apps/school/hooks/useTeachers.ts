@@ -20,6 +20,8 @@ interface TeacherFilters {
   qualification?: QualificationLevel;
   search?: string;
   mode?: "all"; // When set to "all", fetches all teachers without pagination
+  /** current staff (default), former staff (left / transferred out), or joining (transfer waiting) */
+  staff?: "current" | "former" | "joining";
 }
 
 interface PaginationParams {
@@ -85,6 +87,7 @@ export function useTeachers(
       if (filters?.qualification) params.append("qualification", filters.qualification);
       if (filters?.search) params.append("search", filters.search);
       if (filters?.mode) params.append("mode", filters.mode);
+      if (filters?.staff && filters.staff !== "current") params.append("staff", filters.staff);
 
       // Only add pagination params if mode is not "all"
       if (filters?.mode !== "all") {
@@ -360,7 +363,7 @@ export function useTeachers(
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters?.status, filters?.gender, filters?.qualification, filters?.search, filters?.mode, pagination?.page, pagination?.pageSize]);
+  }, [filters?.status, filters?.gender, filters?.qualification, filters?.search, filters?.mode, filters?.staff, pagination?.page, pagination?.pageSize]);
 
   return {
     // State

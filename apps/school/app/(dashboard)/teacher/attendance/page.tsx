@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { format } from "date-fns";
+import Link from "next/link";
 import {
   ChevronLeft,
   ClipboardList,
@@ -532,7 +533,10 @@ export default function AttendancePage() {
             <span className="flex items-center justify-center h-8 w-8 rounded-full border-2 border-border text-sm font-bold">
               W
             </span>
-            <p className="text-sm">No classes on weekends</p>
+            <p className="text-sm">No register on a Saturday or Sunday</p>
+            <Link href="/teacher/weekend-classes" className="text-sm text-primary hover:underline">
+              Weekend classes (approved by your HOD) →
+            </Link>
           </CardContent>
         </Card>
       ) : daySlots.length === 0 ? (
