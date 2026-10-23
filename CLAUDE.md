@@ -154,6 +154,37 @@ instead of a separate `apps/office`). The school's first-time setup wizard is `a
   by writing tables from the sync code. What fields a phone gets is `syncRecords.repository.ts`
   (minimum needed: no learner birth dates, addresses, medical or vulnerability details).
 
+## Teacher phone app (Phase 6, since 2026-10-22)
+
+- `apps/mobile` is an **Expo (SDK 57, the version the Play Store Expo Go runs as of 23 October 2026) / React Native** app, and **its own npm project, not a
+  workspace** (root `workspaces` lists `apps/server`, `apps/school`, `packages/*` explicitly) so its
+  React/React Native never clash with the website's. Install/run/check with the root scripts
+  `mobile:install`, `mobile`, `mobile:typecheck`. Root ESLint ignores it.
+- It imports **only pure TypeScript** from `packages/shared` (`@school/shared/<path>`, mapped in
+  `metro.config.js` and `tsconfig.json`). Never import server code or Node/DOM-only modules there.
+- It talks to the server only through `/api/auth/*` and `/api/sync/*`. Every write is a sync
+  operation (`apps/mobile/src/ops.ts` → outbox → `POST /api/sync/push`); a new kind of phone write
+  = a new operation in `sync.operations.ts` first, then `ops.ts`. Never add phone-only REST routes.
+- Local data: SQLite (`src/db.ts`); secrets (token, PIN hash, device id) in secure storage
+  (`src/storage.ts`). Learner fields on the phone are whatever `syncRecords.repository.ts` sends.
+
+## Public holidays, school closures and marks history (Phase 5b, since 2026-10-21)
+
+- **No registers on a non-school day**: weekend, public holiday or school closure —
+  `calendarService.nonSchoolDay(date)` (`features/calendar/`), called by `attendanceRecord.service.ts`
+  for every mark and correction. Special classes are the only register on those days. Don't add
+  a second holiday check anywhere; call the calendar service.
+- **Public holidays** = `zambianPublicHolidays(year)` (`@school/shared/calendar/zambia-holidays`:
+  fixed days, Easter, first-Monday rules, Sunday → Monday) plus HQ's `PublicHolidayChange` rows
+  (ADD / CANCEL, national table, HQ office only). When the law changes, update the TS rules for
+  future years; HQ's changes cover the gap. **Closures** = `SchoolClosure` (school-owned, head/deputy).
+  Phones get them in the sync snapshot/changes `calendar` field.
+- **Marks history** (`mark_changes`) is written by the database trigger
+  `emis_record_mark_change` on `student_assessment_results` (who = `app.user_id`, source =
+  `app.source`: set `source: "PHONE"` in `runWithTenant` for phone work, else WEB/SYSTEM). Never
+  write history lines from code, except the phone "not applied" lines in `sync.operations.ts`.
+  The app can't update or delete them. The phone marks conflict rule mirrors attendance
+  (`baseVersion` + `madeAt`).
 ## School fees (since 2026-10-19)
 
 - **On per school**: `School.feesEnabled` — always true for `PRIVATE` (set when the DEBS registers

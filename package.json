@@ -2,9 +2,10 @@
   "name": "schoolmanagement",
   "version": "0.1.0",
   "private": true,
-  "description": "School Management System — one API server and database, one app per level (school now; DEBS/PEO office next).",
+  "description": "School Management System \u2014 one API server and database, one app per level (school now; DEBS/PEO office next).",
   "workspaces": [
-    "apps/*",
+    "apps/server",
+    "apps/school",
     "packages/*"
   ],
   "scripts": {
@@ -27,7 +28,12 @@
     "db:studio": "npm run db:studio -w @school/server",
     "db:reset": "npm run db:reset -w @school/server",
     "app:restart": "node scripts/restart-app.cjs",
-    "app:stop": "node scripts/stop-app.cjs"
+    "app:stop": "node scripts/stop-app.cjs",
+    "mobile": "npm --prefix apps/mobile start",
+    "mobile:install": "npm --prefix apps/mobile install",
+    "mobile:typecheck": "npm --prefix apps/mobile run typecheck",
+    "mobile:tunnel": "npm --prefix apps/mobile run start:tunnel",
+    "mobile:clear": "npm --prefix apps/mobile run start:clear"
   },
   "dependencies": {
     "dotenv": "^17.4.2"

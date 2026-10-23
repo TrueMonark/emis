@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "**/dist/**",
     "**/next-env.d.ts",
     "docs/**",
+    // The phone app is its own project (own React Native toolchain); checked with its own tsc.
+    "apps/mobile/**",
   ]),
   {
     settings: { next: { rootDir: path.join(import.meta.dirname, "apps/school") } },

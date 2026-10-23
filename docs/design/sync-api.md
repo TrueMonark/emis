@@ -84,9 +84,9 @@ The first download, and again whenever the phone is told to resync.
 
 | type | payload | rules |
 |---|---|---|
-| `attendance.mark` | classId, termId, date (YYYY-MM-DD), timetableSlotId (null = daily register), records [{ studentId, status, remarks?, baseVersion? }] | Same service as the web: no weekends, class teacher / cover / own period only, no future dates, no closed year. **Conflicts:** if the server's mark changed after `madeAt` (and after the `baseVersion` the phone saw), the server's mark is kept and listed in `result.conflicts`. |
+| `attendance.mark` | classId, termId, date (YYYY-MM-DD), timetableSlotId (null = daily register), records [{ studentId, status, remarks?, baseVersion? }] | Same service as the web: no weekends, public holidays or school closure days, class teacher / cover / own period only, no future dates, no closed year. **Conflicts:** if the server's mark changed after `madeAt` (and after the `baseVersion` the phone saw), the server's mark is kept and listed in `result.conflicts`. |
 | `specialClass.register` | specialClassId, records [{ studentId, status, remarks? }] | Only the teacher who asked for the weekend class (or the head/deputy), only once approved, on or after its day. |
-| `marks.enter` | assessmentId, results [{ studentId, marksObtained, isAbsent?, remarks? }] | Refused once the assessment is COMPLETED or its entry window has closed; otherwise as the web (the later entry wins). |
+| `marks.enter` | assessmentId, results [{ studentId, marksObtained, isAbsent?, remarks?, baseVersion? }] | Refused once the assessment is COMPLETED or its entry window has closed; otherwise as the web. **Conflicts (Phase 5b):** same rule as attendance — a mark changed on the server after `madeAt` (and after `baseVersion`) is kept, listed in `result.conflicts` (with the server's mark), and written to the marks history as "not applied". Every applied mark is in the history with source PHONE. |
 | `lessonLog.save` | timetableSlotId, date, topic, subtopics? | Own period on its own weekday (as the web). |
 
 Anything else is rejected: unknown type, invalid payload, or a refusal by the service. The
@@ -94,5 +94,15 @@ reason is in `error`, ready to show to the teacher.
 
 ## What's not in Phase 5
 - Learner and staff details are read-only on phones (design §7 rule 6).
-- Marks have no history line yet. The later entry simply wins while the window is open.
-- The app itself (offline storage, PIN, the "12 waiting to sync" counter) is Phase 6.
+- ~~Marks have no history line yet.~~ Done in Phase 5b: every mark change is in the marks
+  history, and an older phone change no longer overwrites a newer mark.
+- ~~The app itself~~ Built in Phase 6: `apps/mobile` (offline storage, PIN, the "waiting to sync" counter).
+
+
+## Calendar (Phase 5b)
+
+Snapshots and pulls carry `calendar: { from, to, nonSchoolDays: [{ date, kind, name }] }`:
+public holidays (`PUBLIC_HOLIDAY`, the national list after HQ's changes) and the school's
+closure days (`SCHOOL_CLOSURE`) from a month ago to four months ahead. Weekends are not listed.
+The phone should refuse to start a daily or period register on those days (the server refuses it
+anyway) and offer only special classes. Replace the whole list on every pull.

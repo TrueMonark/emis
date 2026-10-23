@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Monark Edu",
+    "slug": "monark-edu-teacher",
+    "scheme": "monarkedu",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.monarkdevs.edu.teacher"
+    },
+    "android": {
+      "package": "com.monarkdevs.edu.teacher"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "color": "#1d4ed8"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
