@@ -44,6 +44,7 @@ Object.assign(process.env, { NODE_ENV: process.env.NODE_ENV === "development" ||
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import { stageFromLegacyLevel } from "@school/shared/curriculum/year-levels";
+import { zambianPublicHolidays } from "@school/shared/calendar/zambia-holidays";
 import type {
   Prisma, Role, Permission, GradeLevel, SchoolLevel, TermType, Gender, QualificationLevel, RoomType,
   ParentRelationship, VulnerabilityStatus, AttendanceStatus, ExamType, AssessmentStatus, ECZGrade,
@@ -89,18 +90,10 @@ const TERMS = [
   { type: "TERM_3", start: "2026-09-07", end: "2026-12-04" },
 ] as const;
 
-// Zambian public holidays falling on school days in 2026 (observed dates).
-const HOLIDAYS = new Set([
-  "2026-03-09", // Women's Day (observed)
-  "2026-03-12", // Youth Day
-  "2026-04-03", // Good Friday
-  "2026-04-06", // Easter Monday
-  "2026-05-25", // Africa Day
-  "2026-07-06", // Heroes' Day
-  "2026-07-07", // Unity Day
-  "2026-08-03", // Farmers' Day
-  "2026-10-19", // National Day of Prayer (observed)
-]);
+// No registers on public holidays (the app's own list, Phase 5b) or on the demo school's
+// closure day (added to its calendar below).
+const DEMO_CLOSURE = { name: "Staff development day", date: "2026-09-25" };
+const HOLIDAYS = new Set([...zambianPublicHolidays(YEAR).map((h) => h.date), DEMO_CLOSURE.date]);
 
 const TODAY = d(isoDay(new Date()));
 
@@ -910,6 +903,80 @@ async function seedDemoSchool() {
       count++;
     }
     console.log(`✅ ${count} weekend classes (one with its register, one waiting for the HOD)`);
+  }
+
+  // ── School calendar (Phase 5b): one closure day this term, and a mid-term break ahead.
+  await prisma.schoolClosure.createMany({
+    data: [
+      { name: DEMO_CLOSURE.name, startDate: d(DEMO_CLOSURE.date), endDate: d(DEMO_CLOSURE.date), reason: "Teachers' in-service training (CPD)", createdById: userIdByKey["HEAD_TEACHER"] },
+      { name: "Mid-term break", startDate: d("2026-10-29"), endDate: d("2026-10-30"), reason: "Term 3 mid-term break", createdById: userIdByKey["HEAD_TEACHER"] },
+    ],
+  });
+  console.log("✅ School calendar: a staff development day and the Term 3 mid-term break");
+
+  // ── School profile and returns (Phase 7): the school's facilities, and two returns waiting for
+  //    it: the national census from HQ and the DEBS's Term 3 return. Nothing started yet, so the
+  //    whole flow (draft → submit → approve / send back) can be tried from the start.
+  await systemPrisma.schoolFacilities.create({
+    data: {
+      schoolId: DEMO_SCHOOL_ID,
+      classrooms: 18,
+      desks: 520,
+      toiletsBoys: 9,
+      toiletsGirls: 11,
+      toiletsStaff: 4,
+      waterSource: "BOREHOLE",
+      power: "GRID",
+      internet: true,
+      notes: "Two classrooms in the old block need roof repairs.",
+      updatedById: userIdByKey["HEAD_TEACHER"],
+    },
+  });
+  const officeHead = (email: string) => systemPrisma.user.findUniqueOrThrow({ where: { email }, select: { id: true } });
+  const [hqHeadId, debsHeadId] = await Promise.all([officeHead(OFFICE_STAFF[0].email), officeHead(OFFICE_STAFF[3].email)]);
+  await systemPrisma.returnRound.createMany({
+    data: [
+      {
+        title: "2026 Annual School Census",
+        instructions: "Check the counts against your registers before submitting. Facilities as on the census day.",
+        officeId: "office-hq",
+        periodStart: d("2026-01-12"),
+        periodEnd: d("2026-10-30"),
+        dueDate: d("2026-11-27"),
+        openedById: hqHeadId.id,
+      },
+      {
+        title: "Term 3 2026 return",
+        instructions: "Attendance and registers for Term 3 so far.",
+        officeId: DEMO_DISTRICT.id,
+        periodStart: d("2026-09-07"),
+        periodEnd: d("2026-12-04"),
+        dueDate: d("2026-11-13"),
+        openedById: debsHeadId.id,
+      },
+    ],
+  });
+  console.log("✅ School facilities, and two returns waiting (HQ census, DEBS Term 3 return)");
+
+  // ── Marks history (Phase 5b): a few corrections by Esther Banda, one from her phone, so the
+  //    history isn't only the seed's own entries.
+  {
+    const { runWithTenant } = await import("@/lib/db/tenant");
+    const mine = await prisma.assessment.findFirst({
+      where: { termId: termIds["TERM_3"], subject: { code: "MATH" }, results: { some: {} }, class: { classTeacherAssignments: { some: { teacherId: profileIdByKey["ebanda"] } } } },
+      select: { id: true, totalMarks: true, results: { take: 3, orderBy: { studentId: "asc" }, select: { id: true, marksObtained: true } } },
+    });
+    if (mine) {
+      const fix = (r: { id: string; marksObtained: number }, by: number) =>
+        prisma.studentAssessmentResult.update({ where: { id: r.id }, data: { marksObtained: Math.min(mine.totalMarks, Math.max(0, r.marksObtained + by)) } });
+      const [a, b, c] = mine.results;
+      await runWithTenant({ schoolId: DEMO_SCHOOL_ID, userId: userIdByKey["ebanda"] }, async () => {
+        if (a) await fix(a, 2);
+        if (b) await fix(b, -3);
+      });
+      if (c) await runWithTenant({ schoolId: DEMO_SCHOOL_ID, userId: userIdByKey["ebanda"], source: "PHONE" }, () => fix(c, 1));
+      console.log("✅ Marks history: three corrections on Form 2 A Maths (one from a phone)");
+    }
   }
 
   // ── School fees (private school): the bursar's account, term fees per year level, a PTA

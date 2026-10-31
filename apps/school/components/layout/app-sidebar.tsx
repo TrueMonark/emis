@@ -19,7 +19,10 @@ import {
   FileCheck,
   TrendingUp,
   CalendarPlus,
+  CalendarDays,
   Wallet,
+  Landmark,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -97,6 +100,11 @@ const navGroups = [
         icon: Building2,
       },
       {
+        title: "School calendar",
+        url: "/admin/calendar",
+        icon: CalendarDays,
+      },
+      {
         title: "Timetable",
         url: "/admin/timetable",
         icon: Calendar,
@@ -149,6 +157,21 @@ const navGroups = [
         title: "Reports",
         url: "/admin/reports",
         icon: BarChart3,
+      },
+    ],
+  },
+  {
+    label: "Education office",
+    items: [
+      {
+        title: "School profile",
+        url: "/admin/school-profile",
+        icon: Landmark,
+      },
+      {
+        title: "Returns",
+        url: "/admin/returns",
+        icon: ClipboardCheck,
       },
     ],
   },

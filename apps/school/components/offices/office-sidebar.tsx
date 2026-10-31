@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightLeft, Building2, FileClock, Home, KeyRound, LogOut, School } from "lucide-react";
+import { ArrowRightLeft, BarChart3, Building2, CalendarDays, ClipboardCheck, FileClock, Home, KeyRound, LogOut, School } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -24,10 +24,13 @@ const groups: NavGroup[] = [
     label: "Office",
     items: [
       { title: "Overview", url: "/office", icon: Home },
+      { title: "School profiles", url: "/office/profiles", icon: BarChart3 },
+      { title: "Returns", url: "/office/returns", icon: ClipboardCheck },
       { title: "Schools", url: "/office/schools", icon: School },
       { title: "Offices & accounts", url: "/office/offices", icon: Building2 },
       { title: "Requests", url: "/office/requests", icon: KeyRound },
       { title: "Transfers", url: "/office/transfers", icon: ArrowRightLeft },
+      { title: "Public holidays", url: "/office/holidays", icon: CalendarDays },
       { title: "Audit log", url: "/office/audit", icon: FileClock },
     ],
   },

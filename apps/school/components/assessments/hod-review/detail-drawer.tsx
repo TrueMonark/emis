@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { format } from "date-fns";
 import {
   X,
@@ -10,7 +11,9 @@ import {
   XCircle,
   Clock,
   User,
+  History,
 } from "lucide-react";
+import { MarksHistoryDialog } from "../marks-history-dialog";
 import {
   Sheet,
   SheetContent,
@@ -48,6 +51,7 @@ export function DetailDrawer({
   onLockAssessment,
   onContactTeacher,
 }: DetailDrawerProps) {
+  const [historyOpen, setHistoryOpen] = useState(false);
   if (!assessment) return null;
 
   const getInitials = (name: string) => {
@@ -220,6 +224,10 @@ export function DetailDrawer({
 
         {/* Action Buttons */}
         <div className="absolute bottom-0 left-0 right-0 p-4 bg-card border-t flex gap-2">
+          <Button variant="outline" className="flex-1 gap-2" onClick={() => setHistoryOpen(true)}>
+            <History className="w-4 h-4" />
+            History
+          </Button>
           <Button
             variant="outline"
             className="flex-1 gap-2"
@@ -246,6 +254,12 @@ export function DetailDrawer({
           </Button>
         </div>
       </SheetContent>
+      <MarksHistoryDialog
+        key={`${assessment.assessmentId}-${historyOpen}`}
+        assessmentId={assessment.assessmentId}
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+      />
     </Sheet>
   );
 }

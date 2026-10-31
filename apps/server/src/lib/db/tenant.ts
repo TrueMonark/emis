@@ -28,6 +28,11 @@ export interface TenantContext {
   schoolId: string | null;
   /** The signed-in person; lets them see their own teacher profile from any school. */
   userId: string | null;
+  /**
+   * Where the change comes from, for the marks history (Phase 5b): "PHONE" while applying a
+   * phone's sync operations; otherwise WEB (or SYSTEM without a user).
+   */
+  source?: "WEB" | "PHONE";
 }
 
 const storage = new AsyncLocalStorage<TenantContext>();
@@ -124,10 +129,11 @@ function isDeferred(value: unknown): value is DeferredQuery {
 
 /** `SET LOCAL ROLE emis_app` + this transaction's school and user. */
 function contextStatement(client: AnyClient, context: TenantContext = currentTenant()): unknown {
-  const { schoolId, userId } = context;
+  const { schoolId, userId, source } = context;
   return client.$executeRaw`SELECT set_config('role', 'emis_app', true),
     set_config('app.school_id', ${schoolId ?? ""}, true),
-    set_config('app.user_id', ${userId ?? ""}, true)`;
+    set_config('app.user_id', ${userId ?? ""}, true),
+    set_config('app.source', ${source ?? ""}, true)`;
 }
 
 /**

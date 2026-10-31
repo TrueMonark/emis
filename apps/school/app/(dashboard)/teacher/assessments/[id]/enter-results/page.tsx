@@ -32,7 +32,9 @@ import {
   Lock,
   Clock,
   CalendarClock,
+  History,
 } from "lucide-react";
+import { MarksHistoryDialog } from "@/components/assessments/marks-history-dialog";
 import { Skeleton } from "@school/ui/components/skeleton";
 import { useToast } from "@school/ui/hooks/use-toast";
 import { api } from "@/lib/api-client";
@@ -105,6 +107,7 @@ export default function EnterResultsPage() {
   const [results, setResults] = useState<Record<string, Result>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [savingStudentId, setSavingStudentId] = useState<string | null>(null);
   const [showAutoSaveSuccess, setShowAutoSaveSuccess] = useState(false);
 
@@ -667,6 +670,12 @@ export default function EnterResultsPage() {
           )}
         </Button>
 
+        <Button variant="outline" size="sm" className="ml-auto" onClick={() => setHistoryOpen(true)}>
+          <History className="h-4 w-4 mr-1.5" />
+          <span className="hidden lg:inline">Marks history</span>
+          <span className="lg:hidden">History</span>
+        </Button>
+
         <Button
           onClick={handleSaveAll}
           disabled={saving || enteredCount === 0 || isEntryBlocked}
@@ -676,6 +685,8 @@ export default function EnterResultsPage() {
           {saving ? "Saving…" : "Save All"}
         </Button>
       </div>
+
+      <MarksHistoryDialog key={String(historyOpen)} assessmentId={assessmentId} open={historyOpen} onOpenChange={setHistoryOpen} />
 
       {/* ── Register ── */}
       <Card className="overflow-hidden rounded-none border-x-0 lg:rounded-lg lg:border-x">

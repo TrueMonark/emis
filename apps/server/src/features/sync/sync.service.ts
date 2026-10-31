@@ -13,6 +13,8 @@ import { getErrorMessage } from "@school/shared/format";
 import { syncRecordsRepository, type SyncRecord } from "./syncRecords.repository";
 import { syncOperationRepository } from "./syncOperation.repository";
 import { OPERATION_TYPES, OperationRejected, runOperation } from "./sync.operations";
+import { currentTenant, runWithTenant } from "@/lib/db/tenant";
+import { calendarService } from "@/features/calendar/calendar.service";
 
 /** How many days a phone may work offline before it must connect once (a national setting). */
 export function offlineDays(): number {
@@ -127,6 +129,7 @@ export class PhoneSyncService {
       serverTime: new Date().toISOString(),
       settings: { offlineDays: offlineDays() },
       me: { userId, teacherProfileId: teacher.id, name: `${teacher.firstName} ${teacher.lastName}` },
+      calendar: await this.calendar(),
       data,
     };
   }
@@ -193,7 +196,26 @@ export class PhoneSyncService {
       const record = records.get(`${e.entity}:${e.id}`);
       if (record) changes.unshift({ ...e, record });
     }
-    return { resyncRequired: false as const, changes, cursor: encodeCursor(page.next), hasMore: page.hasMore, scope: scope.fingerprint };
+    return {
+      resyncRequired: false as const,
+      changes,
+      cursor: encodeCursor(page.next),
+      hasMore: page.hasMore,
+      scope: scope.fingerprint,
+      calendar: await this.calendar(),
+    };
+  }
+
+  /**
+   * Public holidays and closure days from a month back to four months ahead (Phase 5b), sent
+   * whole with every snapshot and pull, so the phone can refuse registers on those days
+   * offline. Weekends aren't listed (the phone knows those).
+   */
+  private async calendar() {
+    const today = new Date();
+    const from = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - 31));
+    const to = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 122));
+    return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10), nonSchoolDays: await calendarService.nonSchoolDays(from, to) };
   }
 
   /**
@@ -224,12 +246,15 @@ export class PhoneSyncService {
       const madeAtRaw = op.madeAt ? new Date(op.madeAt) : now;
       const madeAt = madeAtRaw > now ? now : madeAtRaw; // a phone clock ahead of time can't win conflicts
       try {
-        const result = await runOperation(op.type as (typeof OPERATION_TYPES)[number], op.payload, {
-          userId,
-          role,
-          teacherProfileId: teacher.id,
-          madeAt,
-        });
+        // Marked as coming from the phone, for the marks history.
+        const result = await runWithTenant({ ...currentTenant(), source: "PHONE" }, () =>
+          runOperation(op.type as (typeof OPERATION_TYPES)[number], op.payload, {
+            userId,
+            role,
+            teacherProfileId: teacher.id,
+            madeAt,
+          })
+        );
         await syncOperationRepository.finish(claimed.id, "APPLIED", { status: "applied", result });
         results.push({ opId: op.opId, status: "applied", result });
       } catch (error) {

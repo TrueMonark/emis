@@ -54,203 +54,223 @@ import * as r49 from "./api/assessment-windows/route";
 import * as r50 from "./api/assessments/route";
 import * as r51 from "./api/assessments/[id]/route";
 import * as r52 from "./api/assessments/[id]/complete/route";
-import * as r53 from "./api/assessments/[id]/publish/route";
-import * as r54 from "./api/assessments/[id]/reopen/route";
-import * as r55 from "./api/assessments/[id]/results/route";
-import * as r56 from "./api/assessments/[id]/stats/route";
-import * as r57 from "./api/assignments/route";
-import * as r58 from "./api/assignments/bulk/route";
-import * as r59 from "./api/assignments/[id]/route";
-import * as r60 from "./api/attendance/route";
-import * as r61 from "./api/attendance/class/[classId]/route";
-import * as r62 from "./api/attendance/period/route";
-import * as r63 from "./api/attendance/register-covers/route";
-import * as r64 from "./api/attendance/register-covers/teachers/route";
-import * as r65 from "./api/attendance/register-covers/[id]/route";
-import * as r66 from "./api/attendance/reports/route";
-import * as r67 from "./api/attendance/student/[studentId]/route";
-import * as r68 from "./api/attendance/student/[studentId]/stats/route";
-import * as r69 from "./api/attendance/[id]/route";
-import * as r70 from "./api/auth/change-password/route";
-import * as r71 from "./api/auth/forgot-password/route";
-import * as r72 from "./api/auth/hod-status/route";
-import * as r73 from "./api/auth/login/route";
-import * as r74 from "./api/auth/me/route";
-import * as r75 from "./api/classes/route";
-import * as r76 from "./api/classes/import/route";
-import * as r77 from "./api/classes/[id]/route";
-import * as r78 from "./api/classes/[id]/assignments/route";
-import * as r79 from "./api/classes/[id]/class-teacher/route";
-import * as r80 from "./api/classes/[id]/enrollment-stats/route";
-import * as r81 from "./api/classes/[id]/pathway/route";
-import * as r82 from "./api/classes/[id]/pathway-check/route";
-import * as r83 from "./api/classes/[id]/students/route";
-import * as r84 from "./api/curriculum/catalogue/route";
-import * as r85 from "./api/curriculum/pathways/route";
-import * as r86 from "./api/departments/route";
-import * as r87 from "./api/departments/[id]/route";
-import * as r88 from "./api/departments/[id]/members/route";
-import * as r89 from "./api/enrollments/route";
-import * as r90 from "./api/enrollments/bulk/route";
-import * as r91 from "./api/enrollments/[id]/route";
-import * as r92 from "./api/enrollments/[id]/withdraw/route";
-import * as r93 from "./api/finance/discounts/route";
-import * as r94 from "./api/finance/discounts/[id]/end/route";
-import * as r95 from "./api/finance/fees/route";
-import * as r96 from "./api/finance/fees/refresh/route";
-import * as r97 from "./api/finance/fees/term-fees/route";
-import * as r98 from "./api/finance/fees/[id]/route";
-import * as r99 from "./api/finance/fees/[id]/learners/route";
-import * as r100 from "./api/finance/fees/[id]/learners/[studentId]/route";
-import * as r101 from "./api/finance/learners/route";
-import * as r102 from "./api/finance/learners/[id]/route";
-import * as r103 from "./api/finance/options/route";
-import * as r104 from "./api/finance/overview/route";
-import * as r105 from "./api/finance/payments/route";
-import * as r106 from "./api/finance/payments/[id]/route";
-import * as r107 from "./api/finance/payments/[id]/void/route";
-import * as r108 from "./api/finance/reports/class-list/route";
-import * as r109 from "./api/finance/reports/collections/route";
-import * as r110 from "./api/finance/reports/debtors/route";
-import * as r111 from "./api/finance/staff/route";
-import * as r112 from "./api/finance/staff/[id]/route";
-import * as r113 from "./api/grade-levels/route";
-import * as r114 from "./api/hod/assessment-entries/route";
-import * as r115 from "./api/hod/assessment-entries/deadline/route";
-import * as r116 from "./api/hod/assignments/route";
-import * as r117 from "./api/hod/assignments/bulk/route";
-import * as r118 from "./api/hod/assignments/by-class/[classId]/route";
-import * as r119 from "./api/hod/assignments/by-subject/[subjectId]/route";
-import * as r120 from "./api/hod/assignments/by-teacher/[teacherId]/route";
-import * as r121 from "./api/hod/assignments/[id]/route";
-import * as r122 from "./api/hod/classes/route";
-import * as r123 from "./api/hod/curriculum/route";
-import * as r124 from "./api/hod/curriculum/[classId]/route";
-import * as r125 from "./api/hod/dashboard/route";
-import * as r126 from "./api/hod/performance/route";
-import * as r127 from "./api/hod/profile/route";
-import * as r128 from "./api/hod/reports/classes/route";
-import * as r129 from "./api/hod/reports/grades/route";
-import * as r130 from "./api/hod/reports/performance/route";
-import * as r131 from "./api/hod/reports/subject-analysis/route";
-import * as r132 from "./api/hod/reports/subjects/route";
-import * as r133 from "./api/hod/reports/terms/route";
-import * as r134 from "./api/hod/subjects/route";
-import * as r135 from "./api/hod/teachers/route";
-import * as r136 from "./api/hod/teachers/[teacherId]/subjects/route";
-import * as r137 from "./api/lesson-logs/route";
-import * as r138 from "./api/notifications/route";
-import * as r139 from "./api/notifications/unread-count/route";
-import * as r140 from "./api/notifications/[id]/route";
-import * as r141 from "./api/office/accounts/route";
-import * as r142 from "./api/office/accounts/[id]/route";
-import * as r143 from "./api/office/audit/route";
-import * as r144 from "./api/office/me/route";
-import * as r145 from "./api/office/offices/route";
-import * as r146 from "./api/office/offices/[id]/route";
-import * as r147 from "./api/office/password-resets/route";
-import * as r148 from "./api/office/password-resets/[id]/decline/route";
-import * as r149 from "./api/office/password-resets/[id]/reset/route";
-import * as r150 from "./api/office/people/route";
-import * as r151 from "./api/office/schools/route";
-import * as r152 from "./api/office/schools/[id]/route";
-import * as r153 from "./api/office/schools/[id]/district/route";
-import * as r154 from "./api/office/transfers/route";
-import * as r155 from "./api/office/transfers/[id]/confirm/route";
-import * as r156 from "./api/office/transfers/[id]/decline/route";
-import * as r157 from "./api/parents/route";
-import * as r158 from "./api/parents/[id]/route";
-import * as r159 from "./api/parents/[id]/students/route";
-import * as r160 from "./api/password-resets/route";
-import * as r161 from "./api/password-resets/[id]/decline/route";
-import * as r162 from "./api/password-resets/[id]/reset/route";
-import * as r163 from "./api/permissions/users/route";
-import * as r164 from "./api/permissions/users/[id]/overrides/route";
-import * as r165 from "./api/permissions/users/[id]/overrides/[permission]/route";
-import * as r166 from "./api/permissions/users/[id]/role/route";
-import * as r167 from "./api/report-cards/route";
-import * as r168 from "./api/report-cards/bulk/route";
-import * as r169 from "./api/report-cards/positions/route";
-import * as r170 from "./api/report-cards/[id]/route";
-import * as r171 from "./api/report-cards/[id]/pdf/route";
-import * as r172 from "./api/school/identity/route";
-import * as r173 from "./api/school/setup/route";
-import * as r174 from "./api/school/setup/complete/route";
-import * as r175 from "./api/sms/assessment-notify/route";
-import * as r176 from "./api/sms/balance/route";
-import * as r177 from "./api/sms/broadcast/route";
-import * as r178 from "./api/sms/broadcast/preview/route";
-import * as r179 from "./api/sms/logs/route";
-import * as r180 from "./api/sms/send/route";
-import * as r181 from "./api/sms/templates/route";
-import * as r182 from "./api/sms/templates/seed/route";
-import * as r183 from "./api/sms/templates/[id]/route";
-import * as r184 from "./api/sms/test/route";
-import * as r185 from "./api/special-classes/route";
-import * as r186 from "./api/special-classes/options/route";
-import * as r187 from "./api/special-classes/[id]/approve/route";
-import * as r188 from "./api/special-classes/[id]/cancel/route";
-import * as r189 from "./api/special-classes/[id]/register/route";
-import * as r190 from "./api/special-classes/[id]/reject/route";
-import * as r191 from "./api/staff/lookup/route";
-import * as r192 from "./api/students/route";
-import * as r193 from "./api/students/import/route";
-import * as r194 from "./api/students/[id]/route";
-import * as r195 from "./api/students/[id]/enrollments/route";
-import * as r196 from "./api/students/[id]/performance/route";
-import * as r197 from "./api/students/[id]/status/route";
-import * as r198 from "./api/students/[id]/withdraw/route";
-import * as r199 from "./api/subjects/route";
-import * as r200 from "./api/subjects/import/route";
-import * as r201 from "./api/subjects/[id]/route";
-import * as r202 from "./api/subjects/[id]/assignments/route";
-import * as r203 from "./api/subjects/[id]/catalogue-link/route";
-import * as r204 from "./api/subjects/[id]/usage/route";
-import * as r205 from "./api/sync/changes/route";
-import * as r206 from "./api/sync/push/route";
-import * as r207 from "./api/sync/snapshot/route";
-import * as r208 from "./api/teacher/attendance/remedial/route";
-import * as r209 from "./api/teacher/attendance/remedial-pdf/route";
-import * as r210 from "./api/teacher/attendance/trends/route";
-import * as r211 from "./api/teacher/classes/route";
-import * as r212 from "./api/teacher/classes/export-class-list/route";
-import * as r213 from "./api/teacher/classes/[classId]/attendance/route";
-import * as r214 from "./api/teacher/classes/[classId]/session-register/route";
-import * as r215 from "./api/teacher/classes/[classId]/students/route";
-import * as r216 from "./api/teacher/gradebook/analysis/route";
-import * as r217 from "./api/teacher/profile/route";
-import * as r218 from "./api/teacher/profile/subjects/route";
-import * as r219 from "./api/teacher/reports/route";
-import * as r220 from "./api/teacher/reports/classes/route";
-import * as r221 from "./api/teacher/reports/terms/route";
-import * as r222 from "./api/teacher/students/route";
-import * as r223 from "./api/teacher/students/[studentId]/performance/route";
-import * as r224 from "./api/teacher/subject-performance/route";
-import * as r225 from "./api/teacher/timetable/route";
-import * as r226 from "./api/teachers/route";
-import * as r227 from "./api/teachers/[id]/route";
-import * as r228 from "./api/teachers/[id]/assignments/route";
-import * as r229 from "./api/teachers/[id]/reset-password/route";
-import * as r230 from "./api/teachers/[id]/workload/route";
-import * as r231 from "./api/terms/route";
-import * as r232 from "./api/terms/active/route";
-import * as r233 from "./api/terms/[id]/route";
-import * as r234 from "./api/terms/[id]/activate/route";
-import * as r235 from "./api/terms/[id]/deactivate/route";
-import * as r236 from "./api/terms/[id]/stats/route";
-import * as r237 from "./api/timetables/check-availability/route";
-import * as r238 from "./api/timetables/detect-clashes/route";
-import * as r239 from "./api/timetables/suggestions/route";
-import * as r240 from "./api/transfers/route";
-import * as r241 from "./api/transfers/[id]/route";
-import * as r242 from "./api/transfers/[id]/confirm/route";
-import * as r243 from "./api/transfers/[id]/decline/route";
-import * as r244 from "./api/user/teaching-context/route";
-import * as r245 from "./api/users/route";
-import * as r246 from "./api/year-levels/route";
-import * as r247 from "./api/year-levels/reorder/route";
-import * as r248 from "./api/year-levels/templates/route";
-import * as r249 from "./api/year-levels/[id]/route";
+import * as r53 from "./api/assessments/[id]/history/route";
+import * as r54 from "./api/assessments/[id]/publish/route";
+import * as r55 from "./api/assessments/[id]/reopen/route";
+import * as r56 from "./api/assessments/[id]/results/route";
+import * as r57 from "./api/assessments/[id]/stats/route";
+import * as r58 from "./api/assignments/route";
+import * as r59 from "./api/assignments/bulk/route";
+import * as r60 from "./api/assignments/[id]/route";
+import * as r61 from "./api/attendance/route";
+import * as r62 from "./api/attendance/class/[classId]/route";
+import * as r63 from "./api/attendance/period/route";
+import * as r64 from "./api/attendance/register-covers/route";
+import * as r65 from "./api/attendance/register-covers/teachers/route";
+import * as r66 from "./api/attendance/register-covers/[id]/route";
+import * as r67 from "./api/attendance/reports/route";
+import * as r68 from "./api/attendance/student/[studentId]/route";
+import * as r69 from "./api/attendance/student/[studentId]/stats/route";
+import * as r70 from "./api/attendance/[id]/route";
+import * as r71 from "./api/auth/change-password/route";
+import * as r72 from "./api/auth/forgot-password/route";
+import * as r73 from "./api/auth/hod-status/route";
+import * as r74 from "./api/auth/login/route";
+import * as r75 from "./api/auth/me/route";
+import * as r76 from "./api/calendar/route";
+import * as r77 from "./api/calendar/closures/route";
+import * as r78 from "./api/calendar/closures/[id]/route";
+import * as r79 from "./api/calendar/non-school-days/route";
+import * as r80 from "./api/classes/route";
+import * as r81 from "./api/classes/import/route";
+import * as r82 from "./api/classes/[id]/route";
+import * as r83 from "./api/classes/[id]/assignments/route";
+import * as r84 from "./api/classes/[id]/class-teacher/route";
+import * as r85 from "./api/classes/[id]/enrollment-stats/route";
+import * as r86 from "./api/classes/[id]/pathway/route";
+import * as r87 from "./api/classes/[id]/pathway-check/route";
+import * as r88 from "./api/classes/[id]/students/route";
+import * as r89 from "./api/curriculum/catalogue/route";
+import * as r90 from "./api/curriculum/pathways/route";
+import * as r91 from "./api/departments/route";
+import * as r92 from "./api/departments/[id]/route";
+import * as r93 from "./api/departments/[id]/members/route";
+import * as r94 from "./api/enrollments/route";
+import * as r95 from "./api/enrollments/bulk/route";
+import * as r96 from "./api/enrollments/[id]/route";
+import * as r97 from "./api/enrollments/[id]/withdraw/route";
+import * as r98 from "./api/finance/discounts/route";
+import * as r99 from "./api/finance/discounts/[id]/end/route";
+import * as r100 from "./api/finance/fees/route";
+import * as r101 from "./api/finance/fees/refresh/route";
+import * as r102 from "./api/finance/fees/term-fees/route";
+import * as r103 from "./api/finance/fees/[id]/route";
+import * as r104 from "./api/finance/fees/[id]/learners/route";
+import * as r105 from "./api/finance/fees/[id]/learners/[studentId]/route";
+import * as r106 from "./api/finance/learners/route";
+import * as r107 from "./api/finance/learners/[id]/route";
+import * as r108 from "./api/finance/options/route";
+import * as r109 from "./api/finance/overview/route";
+import * as r110 from "./api/finance/payments/route";
+import * as r111 from "./api/finance/payments/[id]/route";
+import * as r112 from "./api/finance/payments/[id]/void/route";
+import * as r113 from "./api/finance/reports/class-list/route";
+import * as r114 from "./api/finance/reports/collections/route";
+import * as r115 from "./api/finance/reports/debtors/route";
+import * as r116 from "./api/finance/staff/route";
+import * as r117 from "./api/finance/staff/[id]/route";
+import * as r118 from "./api/grade-levels/route";
+import * as r119 from "./api/hod/assessment-entries/route";
+import * as r120 from "./api/hod/assessment-entries/deadline/route";
+import * as r121 from "./api/hod/assignments/route";
+import * as r122 from "./api/hod/assignments/bulk/route";
+import * as r123 from "./api/hod/assignments/by-class/[classId]/route";
+import * as r124 from "./api/hod/assignments/by-subject/[subjectId]/route";
+import * as r125 from "./api/hod/assignments/by-teacher/[teacherId]/route";
+import * as r126 from "./api/hod/assignments/[id]/route";
+import * as r127 from "./api/hod/classes/route";
+import * as r128 from "./api/hod/curriculum/route";
+import * as r129 from "./api/hod/curriculum/[classId]/route";
+import * as r130 from "./api/hod/dashboard/route";
+import * as r131 from "./api/hod/performance/route";
+import * as r132 from "./api/hod/profile/route";
+import * as r133 from "./api/hod/reports/classes/route";
+import * as r134 from "./api/hod/reports/grades/route";
+import * as r135 from "./api/hod/reports/performance/route";
+import * as r136 from "./api/hod/reports/subject-analysis/route";
+import * as r137 from "./api/hod/reports/subjects/route";
+import * as r138 from "./api/hod/reports/terms/route";
+import * as r139 from "./api/hod/subjects/route";
+import * as r140 from "./api/hod/teachers/route";
+import * as r141 from "./api/hod/teachers/[teacherId]/subjects/route";
+import * as r142 from "./api/lesson-logs/route";
+import * as r143 from "./api/notifications/route";
+import * as r144 from "./api/notifications/unread-count/route";
+import * as r145 from "./api/notifications/[id]/route";
+import * as r146 from "./api/office/accounts/route";
+import * as r147 from "./api/office/accounts/[id]/route";
+import * as r148 from "./api/office/audit/route";
+import * as r149 from "./api/office/indicators/route";
+import * as r150 from "./api/office/me/route";
+import * as r151 from "./api/office/offices/route";
+import * as r152 from "./api/office/offices/[id]/route";
+import * as r153 from "./api/office/password-resets/route";
+import * as r154 from "./api/office/password-resets/[id]/decline/route";
+import * as r155 from "./api/office/password-resets/[id]/reset/route";
+import * as r156 from "./api/office/people/route";
+import * as r157 from "./api/office/public-holidays/route";
+import * as r158 from "./api/office/public-holidays/[id]/route";
+import * as r159 from "./api/office/returns/route";
+import * as r160 from "./api/office/returns/[id]/route";
+import * as r161 from "./api/office/school-returns/[id]/route";
+import * as r162 from "./api/office/school-returns/[id]/reopen/route";
+import * as r163 from "./api/office/school-returns/[id]/review/route";
+import * as r164 from "./api/office/schools/route";
+import * as r165 from "./api/office/schools/[id]/route";
+import * as r166 from "./api/office/schools/[id]/district/route";
+import * as r167 from "./api/office/schools/[id]/profile/route";
+import * as r168 from "./api/office/transfers/route";
+import * as r169 from "./api/office/transfers/[id]/confirm/route";
+import * as r170 from "./api/office/transfers/[id]/decline/route";
+import * as r171 from "./api/parents/route";
+import * as r172 from "./api/parents/[id]/route";
+import * as r173 from "./api/parents/[id]/students/route";
+import * as r174 from "./api/password-resets/route";
+import * as r175 from "./api/password-resets/[id]/decline/route";
+import * as r176 from "./api/password-resets/[id]/reset/route";
+import * as r177 from "./api/permissions/users/route";
+import * as r178 from "./api/permissions/users/[id]/overrides/route";
+import * as r179 from "./api/permissions/users/[id]/overrides/[permission]/route";
+import * as r180 from "./api/permissions/users/[id]/role/route";
+import * as r181 from "./api/report-cards/route";
+import * as r182 from "./api/report-cards/bulk/route";
+import * as r183 from "./api/report-cards/positions/route";
+import * as r184 from "./api/report-cards/[id]/route";
+import * as r185 from "./api/report-cards/[id]/pdf/route";
+import * as r186 from "./api/school/identity/route";
+import * as r187 from "./api/school/profile/route";
+import * as r188 from "./api/school/profile/facilities/route";
+import * as r189 from "./api/school/returns/route";
+import * as r190 from "./api/school/returns/[roundId]/route";
+import * as r191 from "./api/school/returns/[roundId]/refresh/route";
+import * as r192 from "./api/school/returns/[roundId]/submit/route";
+import * as r193 from "./api/school/setup/route";
+import * as r194 from "./api/school/setup/complete/route";
+import * as r195 from "./api/sms/assessment-notify/route";
+import * as r196 from "./api/sms/balance/route";
+import * as r197 from "./api/sms/broadcast/route";
+import * as r198 from "./api/sms/broadcast/preview/route";
+import * as r199 from "./api/sms/logs/route";
+import * as r200 from "./api/sms/send/route";
+import * as r201 from "./api/sms/templates/route";
+import * as r202 from "./api/sms/templates/seed/route";
+import * as r203 from "./api/sms/templates/[id]/route";
+import * as r204 from "./api/sms/test/route";
+import * as r205 from "./api/special-classes/route";
+import * as r206 from "./api/special-classes/options/route";
+import * as r207 from "./api/special-classes/[id]/approve/route";
+import * as r208 from "./api/special-classes/[id]/cancel/route";
+import * as r209 from "./api/special-classes/[id]/register/route";
+import * as r210 from "./api/special-classes/[id]/reject/route";
+import * as r211 from "./api/staff/lookup/route";
+import * as r212 from "./api/students/route";
+import * as r213 from "./api/students/import/route";
+import * as r214 from "./api/students/[id]/route";
+import * as r215 from "./api/students/[id]/enrollments/route";
+import * as r216 from "./api/students/[id]/performance/route";
+import * as r217 from "./api/students/[id]/status/route";
+import * as r218 from "./api/students/[id]/withdraw/route";
+import * as r219 from "./api/subjects/route";
+import * as r220 from "./api/subjects/import/route";
+import * as r221 from "./api/subjects/[id]/route";
+import * as r222 from "./api/subjects/[id]/assignments/route";
+import * as r223 from "./api/subjects/[id]/catalogue-link/route";
+import * as r224 from "./api/subjects/[id]/usage/route";
+import * as r225 from "./api/sync/changes/route";
+import * as r226 from "./api/sync/push/route";
+import * as r227 from "./api/sync/snapshot/route";
+import * as r228 from "./api/teacher/attendance/remedial/route";
+import * as r229 from "./api/teacher/attendance/remedial-pdf/route";
+import * as r230 from "./api/teacher/attendance/trends/route";
+import * as r231 from "./api/teacher/classes/route";
+import * as r232 from "./api/teacher/classes/export-class-list/route";
+import * as r233 from "./api/teacher/classes/[classId]/attendance/route";
+import * as r234 from "./api/teacher/classes/[classId]/session-register/route";
+import * as r235 from "./api/teacher/classes/[classId]/students/route";
+import * as r236 from "./api/teacher/gradebook/analysis/route";
+import * as r237 from "./api/teacher/profile/route";
+import * as r238 from "./api/teacher/profile/subjects/route";
+import * as r239 from "./api/teacher/reports/route";
+import * as r240 from "./api/teacher/reports/classes/route";
+import * as r241 from "./api/teacher/reports/terms/route";
+import * as r242 from "./api/teacher/students/route";
+import * as r243 from "./api/teacher/students/[studentId]/performance/route";
+import * as r244 from "./api/teacher/subject-performance/route";
+import * as r245 from "./api/teacher/timetable/route";
+import * as r246 from "./api/teachers/route";
+import * as r247 from "./api/teachers/[id]/route";
+import * as r248 from "./api/teachers/[id]/assignments/route";
+import * as r249 from "./api/teachers/[id]/reset-password/route";
+import * as r250 from "./api/teachers/[id]/workload/route";
+import * as r251 from "./api/terms/route";
+import * as r252 from "./api/terms/active/route";
+import * as r253 from "./api/terms/[id]/route";
+import * as r254 from "./api/terms/[id]/activate/route";
+import * as r255 from "./api/terms/[id]/deactivate/route";
+import * as r256 from "./api/terms/[id]/stats/route";
+import * as r257 from "./api/timetables/check-availability/route";
+import * as r258 from "./api/timetables/detect-clashes/route";
+import * as r259 from "./api/timetables/suggestions/route";
+import * as r260 from "./api/transfers/route";
+import * as r261 from "./api/transfers/[id]/route";
+import * as r262 from "./api/transfers/[id]/confirm/route";
+import * as r263 from "./api/transfers/[id]/decline/route";
+import * as r264 from "./api/user/teaching-context/route";
+import * as r265 from "./api/users/route";
+import * as r266 from "./api/year-levels/route";
+import * as r267 from "./api/year-levels/reorder/route";
+import * as r268 from "./api/year-levels/templates/route";
+import * as r269 from "./api/year-levels/[id]/route";
 
 export const routes: ReadonlyArray<{ path: string; handlers: RouteModule }> = [
   { path: "/api/academic-years", handlers: r0 },
@@ -306,201 +326,221 @@ export const routes: ReadonlyArray<{ path: string; handlers: RouteModule }> = [
   { path: "/api/assessments", handlers: r50 },
   { path: "/api/assessments/:id", handlers: r51 },
   { path: "/api/assessments/:id/complete", handlers: r52 },
-  { path: "/api/assessments/:id/publish", handlers: r53 },
-  { path: "/api/assessments/:id/reopen", handlers: r54 },
-  { path: "/api/assessments/:id/results", handlers: r55 },
-  { path: "/api/assessments/:id/stats", handlers: r56 },
-  { path: "/api/assignments", handlers: r57 },
-  { path: "/api/assignments/bulk", handlers: r58 },
-  { path: "/api/assignments/:id", handlers: r59 },
-  { path: "/api/attendance", handlers: r60 },
-  { path: "/api/attendance/class/:classId", handlers: r61 },
-  { path: "/api/attendance/period", handlers: r62 },
-  { path: "/api/attendance/register-covers", handlers: r63 },
-  { path: "/api/attendance/register-covers/teachers", handlers: r64 },
-  { path: "/api/attendance/register-covers/:id", handlers: r65 },
-  { path: "/api/attendance/reports", handlers: r66 },
-  { path: "/api/attendance/student/:studentId", handlers: r67 },
-  { path: "/api/attendance/student/:studentId/stats", handlers: r68 },
-  { path: "/api/attendance/:id", handlers: r69 },
-  { path: "/api/auth/change-password", handlers: r70 },
-  { path: "/api/auth/forgot-password", handlers: r71 },
-  { path: "/api/auth/hod-status", handlers: r72 },
-  { path: "/api/auth/login", handlers: r73 },
-  { path: "/api/auth/me", handlers: r74 },
-  { path: "/api/classes", handlers: r75 },
-  { path: "/api/classes/import", handlers: r76 },
-  { path: "/api/classes/:id", handlers: r77 },
-  { path: "/api/classes/:id/assignments", handlers: r78 },
-  { path: "/api/classes/:id/class-teacher", handlers: r79 },
-  { path: "/api/classes/:id/enrollment-stats", handlers: r80 },
-  { path: "/api/classes/:id/pathway", handlers: r81 },
-  { path: "/api/classes/:id/pathway-check", handlers: r82 },
-  { path: "/api/classes/:id/students", handlers: r83 },
-  { path: "/api/curriculum/catalogue", handlers: r84 },
-  { path: "/api/curriculum/pathways", handlers: r85 },
-  { path: "/api/departments", handlers: r86 },
-  { path: "/api/departments/:id", handlers: r87 },
-  { path: "/api/departments/:id/members", handlers: r88 },
-  { path: "/api/enrollments", handlers: r89 },
-  { path: "/api/enrollments/bulk", handlers: r90 },
-  { path: "/api/enrollments/:id", handlers: r91 },
-  { path: "/api/enrollments/:id/withdraw", handlers: r92 },
-  { path: "/api/finance/discounts", handlers: r93 },
-  { path: "/api/finance/discounts/:id/end", handlers: r94 },
-  { path: "/api/finance/fees", handlers: r95 },
-  { path: "/api/finance/fees/refresh", handlers: r96 },
-  { path: "/api/finance/fees/term-fees", handlers: r97 },
-  { path: "/api/finance/fees/:id", handlers: r98 },
-  { path: "/api/finance/fees/:id/learners", handlers: r99 },
-  { path: "/api/finance/fees/:id/learners/:studentId", handlers: r100 },
-  { path: "/api/finance/learners", handlers: r101 },
-  { path: "/api/finance/learners/:id", handlers: r102 },
-  { path: "/api/finance/options", handlers: r103 },
-  { path: "/api/finance/overview", handlers: r104 },
-  { path: "/api/finance/payments", handlers: r105 },
-  { path: "/api/finance/payments/:id", handlers: r106 },
-  { path: "/api/finance/payments/:id/void", handlers: r107 },
-  { path: "/api/finance/reports/class-list", handlers: r108 },
-  { path: "/api/finance/reports/collections", handlers: r109 },
-  { path: "/api/finance/reports/debtors", handlers: r110 },
-  { path: "/api/finance/staff", handlers: r111 },
-  { path: "/api/finance/staff/:id", handlers: r112 },
-  { path: "/api/grade-levels", handlers: r113 },
-  { path: "/api/hod/assessment-entries", handlers: r114 },
-  { path: "/api/hod/assessment-entries/deadline", handlers: r115 },
-  { path: "/api/hod/assignments", handlers: r116 },
-  { path: "/api/hod/assignments/bulk", handlers: r117 },
-  { path: "/api/hod/assignments/by-class/:classId", handlers: r118 },
-  { path: "/api/hod/assignments/by-subject/:subjectId", handlers: r119 },
-  { path: "/api/hod/assignments/by-teacher/:teacherId", handlers: r120 },
-  { path: "/api/hod/assignments/:id", handlers: r121 },
-  { path: "/api/hod/classes", handlers: r122 },
-  { path: "/api/hod/curriculum", handlers: r123 },
-  { path: "/api/hod/curriculum/:classId", handlers: r124 },
-  { path: "/api/hod/dashboard", handlers: r125 },
-  { path: "/api/hod/performance", handlers: r126 },
-  { path: "/api/hod/profile", handlers: r127 },
-  { path: "/api/hod/reports/classes", handlers: r128 },
-  { path: "/api/hod/reports/grades", handlers: r129 },
-  { path: "/api/hod/reports/performance", handlers: r130 },
-  { path: "/api/hod/reports/subject-analysis", handlers: r131 },
-  { path: "/api/hod/reports/subjects", handlers: r132 },
-  { path: "/api/hod/reports/terms", handlers: r133 },
-  { path: "/api/hod/subjects", handlers: r134 },
-  { path: "/api/hod/teachers", handlers: r135 },
-  { path: "/api/hod/teachers/:teacherId/subjects", handlers: r136 },
-  { path: "/api/lesson-logs", handlers: r137 },
-  { path: "/api/notifications", handlers: r138 },
-  { path: "/api/notifications/unread-count", handlers: r139 },
-  { path: "/api/notifications/:id", handlers: r140 },
-  { path: "/api/office/accounts", handlers: r141 },
-  { path: "/api/office/accounts/:id", handlers: r142 },
-  { path: "/api/office/audit", handlers: r143 },
-  { path: "/api/office/me", handlers: r144 },
-  { path: "/api/office/offices", handlers: r145 },
-  { path: "/api/office/offices/:id", handlers: r146 },
-  { path: "/api/office/password-resets", handlers: r147 },
-  { path: "/api/office/password-resets/:id/decline", handlers: r148 },
-  { path: "/api/office/password-resets/:id/reset", handlers: r149 },
-  { path: "/api/office/people", handlers: r150 },
-  { path: "/api/office/schools", handlers: r151 },
-  { path: "/api/office/schools/:id", handlers: r152 },
-  { path: "/api/office/schools/:id/district", handlers: r153 },
-  { path: "/api/office/transfers", handlers: r154 },
-  { path: "/api/office/transfers/:id/confirm", handlers: r155 },
-  { path: "/api/office/transfers/:id/decline", handlers: r156 },
-  { path: "/api/parents", handlers: r157 },
-  { path: "/api/parents/:id", handlers: r158 },
-  { path: "/api/parents/:id/students", handlers: r159 },
-  { path: "/api/password-resets", handlers: r160 },
-  { path: "/api/password-resets/:id/decline", handlers: r161 },
-  { path: "/api/password-resets/:id/reset", handlers: r162 },
-  { path: "/api/permissions/users", handlers: r163 },
-  { path: "/api/permissions/users/:id/overrides", handlers: r164 },
-  { path: "/api/permissions/users/:id/overrides/:permission", handlers: r165 },
-  { path: "/api/permissions/users/:id/role", handlers: r166 },
-  { path: "/api/report-cards", handlers: r167 },
-  { path: "/api/report-cards/bulk", handlers: r168 },
-  { path: "/api/report-cards/positions", handlers: r169 },
-  { path: "/api/report-cards/:id", handlers: r170 },
-  { path: "/api/report-cards/:id/pdf", handlers: r171 },
-  { path: "/api/school/identity", handlers: r172 },
-  { path: "/api/school/setup", handlers: r173 },
-  { path: "/api/school/setup/complete", handlers: r174 },
-  { path: "/api/sms/assessment-notify", handlers: r175 },
-  { path: "/api/sms/balance", handlers: r176 },
-  { path: "/api/sms/broadcast", handlers: r177 },
-  { path: "/api/sms/broadcast/preview", handlers: r178 },
-  { path: "/api/sms/logs", handlers: r179 },
-  { path: "/api/sms/send", handlers: r180 },
-  { path: "/api/sms/templates", handlers: r181 },
-  { path: "/api/sms/templates/seed", handlers: r182 },
-  { path: "/api/sms/templates/:id", handlers: r183 },
-  { path: "/api/sms/test", handlers: r184 },
-  { path: "/api/special-classes", handlers: r185 },
-  { path: "/api/special-classes/options", handlers: r186 },
-  { path: "/api/special-classes/:id/approve", handlers: r187 },
-  { path: "/api/special-classes/:id/cancel", handlers: r188 },
-  { path: "/api/special-classes/:id/register", handlers: r189 },
-  { path: "/api/special-classes/:id/reject", handlers: r190 },
-  { path: "/api/staff/lookup", handlers: r191 },
-  { path: "/api/students", handlers: r192 },
-  { path: "/api/students/import", handlers: r193 },
-  { path: "/api/students/:id", handlers: r194 },
-  { path: "/api/students/:id/enrollments", handlers: r195 },
-  { path: "/api/students/:id/performance", handlers: r196 },
-  { path: "/api/students/:id/status", handlers: r197 },
-  { path: "/api/students/:id/withdraw", handlers: r198 },
-  { path: "/api/subjects", handlers: r199 },
-  { path: "/api/subjects/import", handlers: r200 },
-  { path: "/api/subjects/:id", handlers: r201 },
-  { path: "/api/subjects/:id/assignments", handlers: r202 },
-  { path: "/api/subjects/:id/catalogue-link", handlers: r203 },
-  { path: "/api/subjects/:id/usage", handlers: r204 },
-  { path: "/api/sync/changes", handlers: r205 },
-  { path: "/api/sync/push", handlers: r206 },
-  { path: "/api/sync/snapshot", handlers: r207 },
-  { path: "/api/teacher/attendance/remedial", handlers: r208 },
-  { path: "/api/teacher/attendance/remedial-pdf", handlers: r209 },
-  { path: "/api/teacher/attendance/trends", handlers: r210 },
-  { path: "/api/teacher/classes", handlers: r211 },
-  { path: "/api/teacher/classes/export-class-list", handlers: r212 },
-  { path: "/api/teacher/classes/:classId/attendance", handlers: r213 },
-  { path: "/api/teacher/classes/:classId/session-register", handlers: r214 },
-  { path: "/api/teacher/classes/:classId/students", handlers: r215 },
-  { path: "/api/teacher/gradebook/analysis", handlers: r216 },
-  { path: "/api/teacher/profile", handlers: r217 },
-  { path: "/api/teacher/profile/subjects", handlers: r218 },
-  { path: "/api/teacher/reports", handlers: r219 },
-  { path: "/api/teacher/reports/classes", handlers: r220 },
-  { path: "/api/teacher/reports/terms", handlers: r221 },
-  { path: "/api/teacher/students", handlers: r222 },
-  { path: "/api/teacher/students/:studentId/performance", handlers: r223 },
-  { path: "/api/teacher/subject-performance", handlers: r224 },
-  { path: "/api/teacher/timetable", handlers: r225 },
-  { path: "/api/teachers", handlers: r226 },
-  { path: "/api/teachers/:id", handlers: r227 },
-  { path: "/api/teachers/:id/assignments", handlers: r228 },
-  { path: "/api/teachers/:id/reset-password", handlers: r229 },
-  { path: "/api/teachers/:id/workload", handlers: r230 },
-  { path: "/api/terms", handlers: r231 },
-  { path: "/api/terms/active", handlers: r232 },
-  { path: "/api/terms/:id", handlers: r233 },
-  { path: "/api/terms/:id/activate", handlers: r234 },
-  { path: "/api/terms/:id/deactivate", handlers: r235 },
-  { path: "/api/terms/:id/stats", handlers: r236 },
-  { path: "/api/timetables/check-availability", handlers: r237 },
-  { path: "/api/timetables/detect-clashes", handlers: r238 },
-  { path: "/api/timetables/suggestions", handlers: r239 },
-  { path: "/api/transfers", handlers: r240 },
-  { path: "/api/transfers/:id", handlers: r241 },
-  { path: "/api/transfers/:id/confirm", handlers: r242 },
-  { path: "/api/transfers/:id/decline", handlers: r243 },
-  { path: "/api/user/teaching-context", handlers: r244 },
-  { path: "/api/users", handlers: r245 },
-  { path: "/api/year-levels", handlers: r246 },
-  { path: "/api/year-levels/reorder", handlers: r247 },
-  { path: "/api/year-levels/templates", handlers: r248 },
-  { path: "/api/year-levels/:id", handlers: r249 },
+  { path: "/api/assessments/:id/history", handlers: r53 },
+  { path: "/api/assessments/:id/publish", handlers: r54 },
+  { path: "/api/assessments/:id/reopen", handlers: r55 },
+  { path: "/api/assessments/:id/results", handlers: r56 },
+  { path: "/api/assessments/:id/stats", handlers: r57 },
+  { path: "/api/assignments", handlers: r58 },
+  { path: "/api/assignments/bulk", handlers: r59 },
+  { path: "/api/assignments/:id", handlers: r60 },
+  { path: "/api/attendance", handlers: r61 },
+  { path: "/api/attendance/class/:classId", handlers: r62 },
+  { path: "/api/attendance/period", handlers: r63 },
+  { path: "/api/attendance/register-covers", handlers: r64 },
+  { path: "/api/attendance/register-covers/teachers", handlers: r65 },
+  { path: "/api/attendance/register-covers/:id", handlers: r66 },
+  { path: "/api/attendance/reports", handlers: r67 },
+  { path: "/api/attendance/student/:studentId", handlers: r68 },
+  { path: "/api/attendance/student/:studentId/stats", handlers: r69 },
+  { path: "/api/attendance/:id", handlers: r70 },
+  { path: "/api/auth/change-password", handlers: r71 },
+  { path: "/api/auth/forgot-password", handlers: r72 },
+  { path: "/api/auth/hod-status", handlers: r73 },
+  { path: "/api/auth/login", handlers: r74 },
+  { path: "/api/auth/me", handlers: r75 },
+  { path: "/api/calendar", handlers: r76 },
+  { path: "/api/calendar/closures", handlers: r77 },
+  { path: "/api/calendar/closures/:id", handlers: r78 },
+  { path: "/api/calendar/non-school-days", handlers: r79 },
+  { path: "/api/classes", handlers: r80 },
+  { path: "/api/classes/import", handlers: r81 },
+  { path: "/api/classes/:id", handlers: r82 },
+  { path: "/api/classes/:id/assignments", handlers: r83 },
+  { path: "/api/classes/:id/class-teacher", handlers: r84 },
+  { path: "/api/classes/:id/enrollment-stats", handlers: r85 },
+  { path: "/api/classes/:id/pathway", handlers: r86 },
+  { path: "/api/classes/:id/pathway-check", handlers: r87 },
+  { path: "/api/classes/:id/students", handlers: r88 },
+  { path: "/api/curriculum/catalogue", handlers: r89 },
+  { path: "/api/curriculum/pathways", handlers: r90 },
+  { path: "/api/departments", handlers: r91 },
+  { path: "/api/departments/:id", handlers: r92 },
+  { path: "/api/departments/:id/members", handlers: r93 },
+  { path: "/api/enrollments", handlers: r94 },
+  { path: "/api/enrollments/bulk", handlers: r95 },
+  { path: "/api/enrollments/:id", handlers: r96 },
+  { path: "/api/enrollments/:id/withdraw", handlers: r97 },
+  { path: "/api/finance/discounts", handlers: r98 },
+  { path: "/api/finance/discounts/:id/end", handlers: r99 },
+  { path: "/api/finance/fees", handlers: r100 },
+  { path: "/api/finance/fees/refresh", handlers: r101 },
+  { path: "/api/finance/fees/term-fees", handlers: r102 },
+  { path: "/api/finance/fees/:id", handlers: r103 },
+  { path: "/api/finance/fees/:id/learners", handlers: r104 },
+  { path: "/api/finance/fees/:id/learners/:studentId", handlers: r105 },
+  { path: "/api/finance/learners", handlers: r106 },
+  { path: "/api/finance/learners/:id", handlers: r107 },
+  { path: "/api/finance/options", handlers: r108 },
+  { path: "/api/finance/overview", handlers: r109 },
+  { path: "/api/finance/payments", handlers: r110 },
+  { path: "/api/finance/payments/:id", handlers: r111 },
+  { path: "/api/finance/payments/:id/void", handlers: r112 },
+  { path: "/api/finance/reports/class-list", handlers: r113 },
+  { path: "/api/finance/reports/collections", handlers: r114 },
+  { path: "/api/finance/reports/debtors", handlers: r115 },
+  { path: "/api/finance/staff", handlers: r116 },
+  { path: "/api/finance/staff/:id", handlers: r117 },
+  { path: "/api/grade-levels", handlers: r118 },
+  { path: "/api/hod/assessment-entries", handlers: r119 },
+  { path: "/api/hod/assessment-entries/deadline", handlers: r120 },
+  { path: "/api/hod/assignments", handlers: r121 },
+  { path: "/api/hod/assignments/bulk", handlers: r122 },
+  { path: "/api/hod/assignments/by-class/:classId", handlers: r123 },
+  { path: "/api/hod/assignments/by-subject/:subjectId", handlers: r124 },
+  { path: "/api/hod/assignments/by-teacher/:teacherId", handlers: r125 },
+  { path: "/api/hod/assignments/:id", handlers: r126 },
+  { path: "/api/hod/classes", handlers: r127 },
+  { path: "/api/hod/curriculum", handlers: r128 },
+  { path: "/api/hod/curriculum/:classId", handlers: r129 },
+  { path: "/api/hod/dashboard", handlers: r130 },
+  { path: "/api/hod/performance", handlers: r131 },
+  { path: "/api/hod/profile", handlers: r132 },
+  { path: "/api/hod/reports/classes", handlers: r133 },
+  { path: "/api/hod/reports/grades", handlers: r134 },
+  { path: "/api/hod/reports/performance", handlers: r135 },
+  { path: "/api/hod/reports/subject-analysis", handlers: r136 },
+  { path: "/api/hod/reports/subjects", handlers: r137 },
+  { path: "/api/hod/reports/terms", handlers: r138 },
+  { path: "/api/hod/subjects", handlers: r139 },
+  { path: "/api/hod/teachers", handlers: r140 },
+  { path: "/api/hod/teachers/:teacherId/subjects", handlers: r141 },
+  { path: "/api/lesson-logs", handlers: r142 },
+  { path: "/api/notifications", handlers: r143 },
+  { path: "/api/notifications/unread-count", handlers: r144 },
+  { path: "/api/notifications/:id", handlers: r145 },
+  { path: "/api/office/accounts", handlers: r146 },
+  { path: "/api/office/accounts/:id", handlers: r147 },
+  { path: "/api/office/audit", handlers: r148 },
+  { path: "/api/office/indicators", handlers: r149 },
+  { path: "/api/office/me", handlers: r150 },
+  { path: "/api/office/offices", handlers: r151 },
+  { path: "/api/office/offices/:id", handlers: r152 },
+  { path: "/api/office/password-resets", handlers: r153 },
+  { path: "/api/office/password-resets/:id/decline", handlers: r154 },
+  { path: "/api/office/password-resets/:id/reset", handlers: r155 },
+  { path: "/api/office/people", handlers: r156 },
+  { path: "/api/office/public-holidays", handlers: r157 },
+  { path: "/api/office/public-holidays/:id", handlers: r158 },
+  { path: "/api/office/returns", handlers: r159 },
+  { path: "/api/office/returns/:id", handlers: r160 },
+  { path: "/api/office/school-returns/:id", handlers: r161 },
+  { path: "/api/office/school-returns/:id/reopen", handlers: r162 },
+  { path: "/api/office/school-returns/:id/review", handlers: r163 },
+  { path: "/api/office/schools", handlers: r164 },
+  { path: "/api/office/schools/:id", handlers: r165 },
+  { path: "/api/office/schools/:id/district", handlers: r166 },
+  { path: "/api/office/schools/:id/profile", handlers: r167 },
+  { path: "/api/office/transfers", handlers: r168 },
+  { path: "/api/office/transfers/:id/confirm", handlers: r169 },
+  { path: "/api/office/transfers/:id/decline", handlers: r170 },
+  { path: "/api/parents", handlers: r171 },
+  { path: "/api/parents/:id", handlers: r172 },
+  { path: "/api/parents/:id/students", handlers: r173 },
+  { path: "/api/password-resets", handlers: r174 },
+  { path: "/api/password-resets/:id/decline", handlers: r175 },
+  { path: "/api/password-resets/:id/reset", handlers: r176 },
+  { path: "/api/permissions/users", handlers: r177 },
+  { path: "/api/permissions/users/:id/overrides", handlers: r178 },
+  { path: "/api/permissions/users/:id/overrides/:permission", handlers: r179 },
+  { path: "/api/permissions/users/:id/role", handlers: r180 },
+  { path: "/api/report-cards", handlers: r181 },
+  { path: "/api/report-cards/bulk", handlers: r182 },
+  { path: "/api/report-cards/positions", handlers: r183 },
+  { path: "/api/report-cards/:id", handlers: r184 },
+  { path: "/api/report-cards/:id/pdf", handlers: r185 },
+  { path: "/api/school/identity", handlers: r186 },
+  { path: "/api/school/profile", handlers: r187 },
+  { path: "/api/school/profile/facilities", handlers: r188 },
+  { path: "/api/school/returns", handlers: r189 },
+  { path: "/api/school/returns/:roundId", handlers: r190 },
+  { path: "/api/school/returns/:roundId/refresh", handlers: r191 },
+  { path: "/api/school/returns/:roundId/submit", handlers: r192 },
+  { path: "/api/school/setup", handlers: r193 },
+  { path: "/api/school/setup/complete", handlers: r194 },
+  { path: "/api/sms/assessment-notify", handlers: r195 },
+  { path: "/api/sms/balance", handlers: r196 },
+  { path: "/api/sms/broadcast", handlers: r197 },
+  { path: "/api/sms/broadcast/preview", handlers: r198 },
+  { path: "/api/sms/logs", handlers: r199 },
+  { path: "/api/sms/send", handlers: r200 },
+  { path: "/api/sms/templates", handlers: r201 },
+  { path: "/api/sms/templates/seed", handlers: r202 },
+  { path: "/api/sms/templates/:id", handlers: r203 },
+  { path: "/api/sms/test", handlers: r204 },
+  { path: "/api/special-classes", handlers: r205 },
+  { path: "/api/special-classes/options", handlers: r206 },
+  { path: "/api/special-classes/:id/approve", handlers: r207 },
+  { path: "/api/special-classes/:id/cancel", handlers: r208 },
+  { path: "/api/special-classes/:id/register", handlers: r209 },
+  { path: "/api/special-classes/:id/reject", handlers: r210 },
+  { path: "/api/staff/lookup", handlers: r211 },
+  { path: "/api/students", handlers: r212 },
+  { path: "/api/students/import", handlers: r213 },
+  { path: "/api/students/:id", handlers: r214 },
+  { path: "/api/students/:id/enrollments", handlers: r215 },
+  { path: "/api/students/:id/performance", handlers: r216 },
+  { path: "/api/students/:id/status", handlers: r217 },
+  { path: "/api/students/:id/withdraw", handlers: r218 },
+  { path: "/api/subjects", handlers: r219 },
+  { path: "/api/subjects/import", handlers: r220 },
+  { path: "/api/subjects/:id", handlers: r221 },
+  { path: "/api/subjects/:id/assignments", handlers: r222 },
+  { path: "/api/subjects/:id/catalogue-link", handlers: r223 },
+  { path: "/api/subjects/:id/usage", handlers: r224 },
+  { path: "/api/sync/changes", handlers: r225 },
+  { path: "/api/sync/push", handlers: r226 },
+  { path: "/api/sync/snapshot", handlers: r227 },
+  { path: "/api/teacher/attendance/remedial", handlers: r228 },
+  { path: "/api/teacher/attendance/remedial-pdf", handlers: r229 },
+  { path: "/api/teacher/attendance/trends", handlers: r230 },
+  { path: "/api/teacher/classes", handlers: r231 },
+  { path: "/api/teacher/classes/export-class-list", handlers: r232 },
+  { path: "/api/teacher/classes/:classId/attendance", handlers: r233 },
+  { path: "/api/teacher/classes/:classId/session-register", handlers: r234 },
+  { path: "/api/teacher/classes/:classId/students", handlers: r235 },
+  { path: "/api/teacher/gradebook/analysis", handlers: r236 },
+  { path: "/api/teacher/profile", handlers: r237 },
+  { path: "/api/teacher/profile/subjects", handlers: r238 },
+  { path: "/api/teacher/reports", handlers: r239 },
+  { path: "/api/teacher/reports/classes", handlers: r240 },
+  { path: "/api/teacher/reports/terms", handlers: r241 },
+  { path: "/api/teacher/students", handlers: r242 },
+  { path: "/api/teacher/students/:studentId/performance", handlers: r243 },
+  { path: "/api/teacher/subject-performance", handlers: r244 },
+  { path: "/api/teacher/timetable", handlers: r245 },
+  { path: "/api/teachers", handlers: r246 },
+  { path: "/api/teachers/:id", handlers: r247 },
+  { path: "/api/teachers/:id/assignments", handlers: r248 },
+  { path: "/api/teachers/:id/reset-password", handlers: r249 },
+  { path: "/api/teachers/:id/workload", handlers: r250 },
+  { path: "/api/terms", handlers: r251 },
+  { path: "/api/terms/active", handlers: r252 },
+  { path: "/api/terms/:id", handlers: r253 },
+  { path: "/api/terms/:id/activate", handlers: r254 },
+  { path: "/api/terms/:id/deactivate", handlers: r255 },
+  { path: "/api/terms/:id/stats", handlers: r256 },
+  { path: "/api/timetables/check-availability", handlers: r257 },
+  { path: "/api/timetables/detect-clashes", handlers: r258 },
+  { path: "/api/timetables/suggestions", handlers: r259 },
+  { path: "/api/transfers", handlers: r260 },
+  { path: "/api/transfers/:id", handlers: r261 },
+  { path: "/api/transfers/:id/confirm", handlers: r262 },
+  { path: "/api/transfers/:id/decline", handlers: r263 },
+  { path: "/api/user/teaching-context", handlers: r264 },
+  { path: "/api/users", handlers: r265 },
+  { path: "/api/year-levels", handlers: r266 },
+  { path: "/api/year-levels/reorder", handlers: r267 },
+  { path: "/api/year-levels/templates", handlers: r268 },
+  { path: "/api/year-levels/:id", handlers: r269 },
 ];

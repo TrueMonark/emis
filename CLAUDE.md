@@ -74,7 +74,8 @@ instead of a separate `apps/office`). The school's first-time setup wizard is `a
 - **National (global) tables:** users, school_memberships, schools, education_offices,
   catalogue_subjects and pathways (read-only for the app), role_permissions, ECZ grading
   schemes. `teacher_profiles` belongs to the
-  person: a school sees the profiles of its current and former members.
+  person: a school sees the profiles of its current and former members. Phase 7 adds
+  school_facilities, return_rounds, school_returns and school_return_events (figures only).
 - **A new school-owned model** needs: `schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))`
   plus the `school` relation and `@@index([schoolId])`; uniques made per school
   (`@@unique([schoolId, code])`); and, in its migration, `ENABLE ROW LEVEL SECURITY` with the
@@ -185,6 +186,34 @@ instead of a separate `apps/office`). The school's first-time setup wizard is `a
   write history lines from code, except the phone "not applied" lines in `sync.operations.ts`.
   The app can't update or delete them. The phone marks conflict rule mirrors attendance
   (`baseVersion` + `madeAt`).
+## School profiles and returns (Phase 7, since 2026-10-31)
+
+- **Offices get counts, never learner records.** The only cross-school reads are the SQL
+  functions `emis_school_indicators` and `emis_school_enrolment_by_level` (SECURITY DEFINER,
+  migration `20261031090000_phase7_profiles_and_returns`), called from
+  `features/indicators/indicators.repository.ts`. They return counts per school and nothing else.
+  Callers decide which schools may be asked for: offices through `officeService.schoolWhere` /
+  `isSchoolInScope`, a school only itself. Never add a cross-school query that returns rows about
+  learners or staff, and never use `systemPrisma` for this.
+- **What the figures are** (enrolment by year level and sex, admissions, leavers, repeaters,
+  orphans / vulnerable / special needs, teachers by sex and qualification, classes, attendance,
+  registers taken out of classes × school days) is `ReturnFigures` in
+  `@school/shared/returns/indicators`, with the derived indicators (`deriveIndicators`) and the
+  adding up (`sumFigures`, `sumFacilities`). Change the SQL and that type together.
+- **School days** for the register figures exclude weekends, the national public holidays
+  (passed in from `calendarService.publicHolidays`) and the school's closures, in SQL.
+- **Facilities** (`school_facilities`, national, one row per school): kept by the head/deputy
+  on the School profile page; every new return copies them, and the head can correct the copy.
+- **Returns** (`features/returns/`): an office head (HQ, PEO or DEBS) opens a `ReturnRound` for
+  every active school in its area. The head/deputy starts a draft (figures from
+  `indicatorsService.figuresFor`), saves, refreshes and submits. The **DEBS of the school's
+  district** (head or officer) approves it or sends it back with a comment. The DEBS head can
+  reopen an approved one. The PEO and HQ see progress and the approved figures added up.
+  Status changes go through `returnsRepository.transition` (a conditional update plus a history
+  line in one transaction), so two people pressing at once can't both win. The history
+  (`school_return_events`) is insert-only for the app, and returns and rounds are never deleted.
+  `school_returns` and `return_rounds` are national tables (figures only), like `schools`.
+
 ## School fees (since 2026-10-19)
 
 - **On per school**: `School.feesEnabled` — always true for `PRIVATE` (set when the DEBS registers

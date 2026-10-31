@@ -22,6 +22,7 @@ import {
   assignClassTeacher,
   assignSubjectTeacher,
 } from "../helpers/db";
+import { isSchoolDayForTests } from "../helpers/dates";
 
 const DAY = 24 * 60 * 60 * 1000;
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
@@ -34,7 +35,7 @@ const latest = (test: (d: Date) => boolean, from = todayUtc()) => {
   while (!test(d)) d = new Date(d.getTime() - DAY);
   return d;
 };
-const lastWeekday = () => latest((d) => d.getUTCDay() >= 1 && d.getUTCDay() <= 5);
+const lastWeekday = () => latest(isSchoolDayForTests); // the latest school day (no weekend or public holiday)
 const lastMonday = () => latest((d) => d.getUTCDay() === 1);
 const lastSaturday = () => latest((d) => d.getUTCDay() === 6);
 

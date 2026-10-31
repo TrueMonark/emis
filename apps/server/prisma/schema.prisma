@@ -329,6 +329,7 @@ model Student {
   statusChangeReason String?
   attendanceRecords  AttendanceRecord[]
   specialClassAttendance SpecialClassAttendance[]
+  markChanges            MarkChange[]
   reportCards        ReportCard[]
   smsLogs            SMSLog[]
   assessmentResults  StudentAssessmentResult[]
@@ -582,6 +583,7 @@ model EducationOffice {
   children  EducationOffice[]   @relation("OfficeTree")
   schools   School[]
   memberships OfficeMembership[]
+  returnRounds ReturnRound[]
 
   @@index([parentId])
   @@index([type])
@@ -644,6 +646,8 @@ model School {
   specialClasses             SpecialClass[]
   specialClassAttendance     SpecialClassAttendance[]
   syncOperations             SyncOperation[]
+  schoolClosures             SchoolClosure[]
+  markChanges                MarkChange[]
   fees                       Fee[]
   feeTargets                 FeeTarget[]
   feeInstalments             FeeInstalment[]
@@ -657,6 +661,8 @@ model School {
   smsLogs                    SMSLog[]
   smsTemplates               SMSTemplate[]
   notifications              Notification[]
+  facilities                 SchoolFacilities?
+  returns                    SchoolReturn[]
 
   @@index([districtOfficeId])
   @@map("schools")
@@ -1067,6 +1073,7 @@ model Assessment {
   subject        Subject                   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   term           Term                      @relation(fields: [termId], references: [id], onDelete: Cascade)
   results        StudentAssessmentResult[]
+  markChanges    MarkChange[]
 
   @@index([termId, classId])
   @@index([subjectId, termId])
@@ -1897,6 +1904,86 @@ model SyncOperation {
   @@map("sync_operations")
 }
 
+// ── Phase 5b (21 October 2026): holidays and marks history ─────────────────────────────────
+
+/// HQ's changes to the national public holiday list: a day declared by the President or added by
+/// law (ADD), or a built-in day that no longer applies (CANCEL). The built-in list is
+/// `zambianPublicHolidays()` in @school/shared/calendar/zambia-holidays. National table.
+model PublicHolidayChange {
+  id          String            @id @default(cuid())
+  date        DateTime          @db.Date
+  kind        HolidayChangeKind
+  name        String
+  reason      String?
+  createdById String?
+  createdAt   DateTime          @default(now())
+
+  @@unique([date])
+  @@map("public_holiday_changes")
+}
+
+enum HolidayChangeKind {
+  ADD
+  CANCEL
+}
+
+/// Days a school is closed (mid-term break, a closure day): no registers, like a public holiday.
+model SchoolClosure {
+  id          String   @id @default(cuid())
+  schoolId    String   @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  name        String
+  startDate   DateTime @db.Date
+  endDate     DateTime @db.Date
+  reason      String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([schoolId])
+  @@index([schoolId, startDate])
+  @@map("school_closures")
+}
+
+/// Every mark entered, changed or deleted (written by a database trigger on
+/// student_assessment_results, whatever the path), plus phone changes that were not applied
+/// because a newer mark was already there. Never changed or deleted by the app.
+model MarkChange {
+  id           String           @id @default(dbgenerated("(gen_random_uuid())::text"))
+  schoolId     String           @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school       School           @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  /// The result row (kept after the result is deleted, so no foreign key)
+  resultId     String?
+  assessmentId String
+  assessment   Assessment       @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  action       MarkChangeAction
+  oldMarks     Float?
+  newMarks     Float?
+  oldAbsent    Boolean?
+  newAbsent    Boolean?
+  oldRemarks   String?
+  newRemarks   String?
+  /// The user who made the change (null: the system, e.g. the seed)
+  changedById  String?
+  /// WEB, PHONE or SYSTEM
+  source       String
+  note         String?
+  changedAt    DateTime         @default(now())
+
+  @@index([schoolId])
+  @@index([assessmentId, studentId, changedAt])
+  @@map("mark_changes")
+}
+
+enum MarkChangeAction {
+  CREATED
+  CHANGED
+  DELETED
+  /// A phone sent an older change; the newer mark was kept
+  PHONE_NOT_APPLIED
+}
+
 // =====================================================================
 // School fees (requested 19 October 2026). Amounts are whole ngwee (K1 = 100 ngwee) so sums are
 // exact. School-owned (row-level security). Only schools with School.feesEnabled use them.
@@ -2109,4 +2196,138 @@ model FeeReceiptCounter {
 
   @@id([schoolId, year])
   @@map("fee_receipt_counters")
+}
+
+// ── Phase 7 (31 October 2026): school profile indicators and returns ─────────────────────────
+
+/// A school's facilities (the Annual School Census categories), kept up to date by the head or
+/// deputy on the School profile page. National table like `schools`: the offices over the school
+/// read it; the app only lets the school's own leaders change it.
+model SchoolFacilities {
+  schoolId     String       @id
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classrooms   Int?
+  desks        Int?
+  toiletsBoys  Int?
+  toiletsGirls Int?
+  toiletsStaff Int?
+  waterSource  WaterSource?
+  power        PowerSource?
+  internet     Boolean?
+  notes        String?
+  updatedById  String?
+  updatedAt    DateTime     @updatedAt
+
+  @@map("school_facilities")
+}
+
+enum WaterSource {
+  PIPED
+  BOREHOLE
+  PROTECTED_WELL
+  UNPROTECTED_WELL
+  SURFACE_WATER
+  RAINWATER
+  NONE
+}
+
+enum PowerSource {
+  GRID
+  SOLAR
+  GENERATOR
+  NONE
+}
+
+/// A return the office asks its schools for ("2026 Annual School Census", "Term 3 return"),
+/// opened by HQ, a PEO or a DEBS for every school in its area. A school's return starts as a
+/// draft filled in from its records the first time the head opens it.
+model ReturnRound {
+  id           String            @id @default(cuid())
+  title        String
+  instructions String?
+  /// The office that opened it; every active school in its area answers
+  officeId     String
+  office       EducationOffice   @relation(fields: [officeId], references: [id])
+  /// Attendance, admissions and leavers are counted between these dates
+  periodStart  DateTime          @db.Date
+  periodEnd    DateTime          @db.Date
+  dueDate      DateTime          @db.Date
+  status       ReturnRoundStatus @default(OPEN)
+  openedById   String
+  closedAt     DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  returns      SchoolReturn[]
+
+  @@index([officeId])
+  @@map("return_rounds")
+}
+
+enum ReturnRoundStatus {
+  OPEN
+  CLOSED
+}
+
+/// One school's answer to a round. Draft → Submitted → Approved, or Returned for correction
+/// (then the head corrects it and submits again). National table: only figures (counts), never
+/// learners' names, so the offices over the school can read it.
+model SchoolReturn {
+  id              String             @id @default(cuid())
+  roundId         String
+  round           ReturnRound        @relation(fields: [roundId], references: [id], onDelete: Restrict)
+  schoolId        String
+  school          School             @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  status          SchoolReturnStatus @default(DRAFT)
+  /// Counts worked out from the school's records (`ReturnFigures`, @school/shared/returns/indicators)
+  figures         Json
+  /// The facilities as the school reports them in this return (`FacilitiesData`)
+  facilities      Json
+  figuresAt       DateTime
+  remarks         String?
+  submissionCount Int                @default(0)
+  submittedAt     DateTime?
+  submittedById   String?
+  reviewedAt      DateTime?
+  reviewedById    String?
+  reviewComment   String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  events          SchoolReturnEvent[]
+
+  @@unique([roundId, schoolId])
+  @@index([schoolId])
+  @@map("school_returns")
+}
+
+enum SchoolReturnStatus {
+  DRAFT
+  SUBMITTED
+  RETURNED
+  APPROVED
+}
+
+/// Every step of a return (who, when, comment; the figures as submitted). Only ever added to.
+model SchoolReturnEvent {
+  id         String            @id @default(cuid())
+  returnId   String
+  return     SchoolReturn      @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  action     ReturnEventAction
+  byUserId   String?
+  comment    String?
+  figures    Json?
+  facilities Json?
+  at         DateTime          @default(now())
+
+  @@index([returnId, at])
+  @@map("school_return_events")
+}
+
+enum ReturnEventAction {
+  STARTED
+  REFRESHED
+  SAVED
+  SUBMITTED
+  RETURNED
+  APPROVED
+  REOPENED
 }

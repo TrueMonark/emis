@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Home, CalendarCheck, ClipboardList, Calendar,
   FileCheck, Building2, FileText, UserCheck,
-  Settings, LogOut, Webhook, Wallet,
+  Settings, LogOut, Webhook, CalendarDays, Wallet, Landmark, ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -24,10 +24,13 @@ const drawerNavItems = [
   { title: "Attendance",   href: "/admin/attendance",         icon: CalendarCheck, exact: false },
   { title: "Assessments",  href: "/admin/assessments",        icon: ClipboardList, exact: false },
   { title: "Timetable",    href: "/admin/timetable",          icon: Calendar,      exact: false },
+  { title: "Calendar",     href: "/admin/calendar",           icon: CalendarDays,  exact: false },
   { title: "Report Cards", href: "/admin/report-cards",       icon: FileCheck,     exact: false },
   { title: "Departments",  href: "/admin/departments",        icon: Building2,     exact: false },
   { title: "Subjects",     href: "/admin/subjects",           icon: FileText,      exact: false },
   { title: "Parents",      href: "/admin/parents",            icon: UserCheck,     exact: false },
+  { title: "School profile", href: "/admin/school-profile",   icon: Landmark,      exact: false },
+  { title: "Returns",      href: "/admin/returns",            icon: ClipboardCheck, exact: false },
 ];
 
 interface MobileAdminDrawerProps {

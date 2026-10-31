@@ -27,6 +27,10 @@ recordings. (It replaced the earlier Kaliwe Heights demo on 18 October 2026.)
   - a generated timetable, and Term 3 lesson logs.
 - **Report cards:** Term 1 for every class, and Term 2 for every class except Grade 12 A (left
   out on purpose for a live "Bulk Generate").
+- **Calendar and marks history** (since 21 October 2026):
+  - no registers on public holidays;
+  - a staff development day and the Term 3 mid-term break as school closures;
+  - three corrected Maths marks (one from a phone) in the marks history.
 - **School fees** (since 19 October 2026):
   - a bursar (finance staff account);
   - term fees per year level for all three terms, with Term 3 in two parts;

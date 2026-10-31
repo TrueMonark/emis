@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useNonSchoolDay, nonSchoolDayLabel } from "@/hooks/useNonSchoolDay";
 import { format } from "date-fns";
 import Link from "next/link";
 import {
@@ -198,6 +199,8 @@ export default function AttendancePage() {
     () => JS_DAY_TO_KEY[selectedDate.getDay()] ?? null,
     [selectedDate]
   );
+  // Public holidays and school closure days have no registers either (Phase 5b).
+  const offDay = useNonSchoolDay(dayKey ? toDateStr(selectedDate) : null);
 
   const daySlots = useMemo(
     () =>
@@ -536,6 +539,18 @@ export default function AttendancePage() {
             <p className="text-sm">No register on a Saturday or Sunday</p>
             <Link href="/teacher/weekend-classes" className="text-sm text-primary hover:underline">
               Weekend classes (approved by your HOD) →
+            </Link>
+          </CardContent>
+        </Card>
+      ) : offDay ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground text-center">
+            <span className="flex items-center justify-center h-8 w-8 rounded-full border-2 border-border text-sm font-bold">
+              H
+            </span>
+            <p className="text-sm">No register today: {nonSchoolDayLabel(offDay)}</p>
+            <Link href="/teacher/weekend-classes" className="text-sm text-primary hover:underline">
+              Special classes (approved by your HOD) →
             </Link>
           </CardContent>
         </Card>

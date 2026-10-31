@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { MoveRight, Pencil, Plus, Search } from "lucide-react";
 import { Button } from "@school/ui/components/button";
 import { Badge } from "@school/ui/components/badge";
@@ -129,7 +130,7 @@ export default function OfficeSchoolsPage() {
                 {schools.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell>
-                      <p className="font-medium">{s.name}</p>
+                      <Link href={`/office/schools/${s.id}`} className="font-medium hover:underline">{s.name}</Link>
                       <p className="text-xs text-muted-foreground">
                         {CATEGORY_LABEL[s.category] ?? s.category}
                         {s.status === "INACTIVE" && " · closed"}

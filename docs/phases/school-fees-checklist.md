@@ -1,6 +1,6 @@
 # School fees for private schools: what changed and how to test it
 
-Built 19 October 2026. **One database migration**: `20261019090000_school_fees`.
+Built 19 October 2026 (rebuilt 21 October to go on top of Phase 5b). **One database migration**: `20261021120000_school_fees`. Install Phase 5b first.
 
 ## What changed, in plain words
 

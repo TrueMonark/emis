@@ -31,6 +31,11 @@ const ACTION_LABEL: Record<string, string> = {
   TRANSFER_DECLINED: "Transfer turned down",
   TRANSFER_CANCELLED: "Transfer withdrawn",
   STAFF_JOINED: "Joined a school",
+  PUBLIC_HOLIDAY_ADDED: "Holiday declared",
+  PUBLIC_HOLIDAY_CANCELLED: "Holiday cancelled",
+  PUBLIC_HOLIDAY_CHANGE_REMOVED: "Holiday change undone",
+  SCHOOL_CLOSURE_ADDED: "School closure",
+  SCHOOL_CLOSURE_REMOVED: "Closure removed",
 };
 
 /** Who did what in this office's area (newest first). Lines are never changed or deleted. */

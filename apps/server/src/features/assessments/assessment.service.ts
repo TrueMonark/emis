@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { Assessment, ExamType, AssessmentStatus, Role } from "@school/shared/types/prisma-enums";
 import { assessmentRepository } from "./assessment.repository";
 import { studentAssessmentResultRepository } from "../assessment-results/studentAssessmentResult.repository";
+import { markChangeRepository } from "../assessment-results/markChange.repository";
 import { subjectRepository } from "../subjects/subject.repository";
 import { classRepository } from "../classes/class.repository";
 import { termRepository } from "../terms/term.repository";
@@ -738,6 +739,41 @@ export class AssessmentService {
     await this.verifyAssessmentAccess(context, assessment.classId, assessment.subjectId);
 
     return studentAssessmentResultRepository.findByAssessmentId(id);
+  }
+
+  /**
+   * Marks history (Phase 5b): every entry, change and deletion of the assessment's marks, newest
+   * first, for whoever may see its results (the subject teacher, the HOD, the head/deputy).
+   */
+  async getMarksHistory(id: string, context: ServiceContext, studentId?: string | null) {
+    const assessment = await assessmentRepository.findById(id);
+    if (!assessment) throw new NotFoundError("Assessment not found");
+    await this.verifyAssessmentAccess(context, assessment.classId, assessment.subjectId);
+
+    const rows = await markChangeRepository.findForAssessment(id, studentId);
+    const people = await markChangeRepository.findUserNames([...new Set(rows.map((r) => r.changedById).filter((x): x is string => !!x))]);
+    const nameOf = new Map(
+      people.map((u) => [u.id, u.profile ? `${u.profile.firstName} ${u.profile.lastName}` : u.displayName || u.email])
+    );
+    return {
+      assessment: { id: assessment.id, title: assessment.title, totalMarks: assessment.totalMarks },
+      changes: rows.map((r) => ({
+        id: r.id,
+        studentId: r.studentId,
+        learner: [r.student.firstName, r.student.middleName, r.student.lastName].filter(Boolean).join(" "),
+        action: r.action,
+        oldMarks: r.oldMarks,
+        newMarks: r.newMarks,
+        oldAbsent: r.oldAbsent,
+        newAbsent: r.newAbsent,
+        oldRemarks: r.oldRemarks,
+        newRemarks: r.newRemarks,
+        changedBy: r.changedById ? nameOf.get(r.changedById) ?? "A former member of staff" : "System",
+        source: r.source,
+        note: r.note,
+        changedAt: r.changedAt,
+      })),
+    };
   }
 
   /**

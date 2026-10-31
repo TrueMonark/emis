@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@school/ui/components/dialog";
 import { isWeekend } from "@school/shared/calendar/weekend";
+import { nonSchoolDayLabel, useNonSchoolDay } from "@/hooks/useNonSchoolDay";
 import { api } from "@/lib/api-client";
 import { cn, getErrorMessage } from "@/lib/utils";
 
@@ -216,7 +217,10 @@ function AskDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenCha
       .catch(() => setOptions([]));
   }, [open]);
 
-  const dateProblem = form.date && !isWeekend(form.date) ? "Choose a Saturday or Sunday" : null;
+  // Weekends, public holidays and closure days (Phase 5b).
+  const offDay = useNonSchoolDay(form.date && !isWeekend(form.date) ? form.date : null);
+  const dateProblem =
+    form.date && !isWeekend(form.date) && !offDay ? "Choose a Saturday, Sunday, public holiday or school closure day" : null;
   const chosen = useMemo(() => options.find((o) => `${o.classId}:${o.subjectId}` === pair), [options, pair]);
 
   const submit = async () => {
@@ -285,6 +289,7 @@ function AskDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenCha
             </div>
           </div>
           {dateProblem && <p className="text-sm text-destructive">{dateProblem}</p>}
+          {offDay && <p className="text-xs text-muted-foreground">{nonSchoolDayLabel(offDay)}</p>}
           <div className="space-y-1.5">
             <Label htmlFor="wc-topic">What you&apos;ll teach</Label>
             <Input id="wc-topic" placeholder="e.g. Revision: quadratic equations" value={form.topic} onChange={(e) => setForm({ ...form, topic: e.target.value })} />

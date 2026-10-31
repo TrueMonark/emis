@@ -23,6 +23,7 @@ import {
   enrollTestStudent,
   assignClassTeacher,
 } from "../helpers/db";
+import { isSchoolDayForTests } from "../helpers/dates";
 
 const DAY = 24 * 60 * 60 * 1000;
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
@@ -47,10 +48,11 @@ describe("daily register and register covers", () => {
   let studentId: string;
   const today = isoDay(todayUtc());
   const inThreeDays = isoDay(new Date(todayUtc().getTime() + 3 * DAY));
-  // No register is taken on a weekend (Phase 5), so the register day is the latest weekday.
+  // No register is taken on a weekend (Phase 5) or a public holiday (Phase 5b), so the register
+  // day is the latest school day.
   const registerDay = (() => {
     let d = todayUtc();
-    while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d = new Date(d.getTime() - DAY);
+    while (!isSchoolDayForTests(d)) d = new Date(d.getTime() - DAY);
     return isoDay(d);
   })();
 

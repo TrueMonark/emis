@@ -140,3 +140,13 @@
   animation: bell-shake 0.7s ease-in-out;
   transform-origin: top center;
 }
+
+/* Printing a page (e.g. a return, Phase 7): leave out the sidebar and the mobile menus. */
+@media print {
+  [data-slot="sidebar"],
+  [data-slot="sidebar-gap"],
+  [data-slot="sidebar-container"],
+  [data-slot="sidebar-trigger"] {
+    display: none !important;
+  }
+}

@@ -64,7 +64,9 @@ import {
   Unlock,
   Clock,
   RotateCcw,
+  History,
 } from "lucide-react";
+import { MarksHistoryDialog } from "@/components/assessments/marks-history-dialog";
 import {
   Empty,
   EmptyContent,
@@ -301,6 +303,7 @@ export default function AdminAssessmentsPage() {
   });
   const [page, setPage] = useState(1);
   const [actionTarget, setActionTarget] = useState<Assessment | null>(null);
+  const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [actionType, setActionType] = useState<"publish" | "complete" | "reopen" | null>(null);
   const [actioning, setActioning] = useState(false);
 
@@ -409,6 +412,7 @@ export default function AdminAssessmentsPage() {
 
   return (
     <div className="space-y-5 px-4 lg:px-0">
+      <MarksHistoryDialog key={historyFor ?? "none"} assessmentId={historyFor} open={!!historyFor} onOpenChange={(o) => !o && setHistoryFor(null)} />
       {/* Header — desktop only; mobile top bar handles the title */}
       <div className="hidden lg:flex items-center justify-between mt-2">
         <div>
@@ -674,6 +678,11 @@ export default function AdminAssessmentsPage() {
                                   </DropdownMenuItem>
                                 </>
                               )}
+                              {a.status !== "DRAFT" && (
+                                <DropdownMenuItem onClick={() => setHistoryFor(a.id)}>
+                                  <History className="h-4 w-4 mr-2" />Marks history
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -751,6 +760,11 @@ export default function AdminAssessmentsPage() {
                                         <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />Finalised — included in report cards
                                       </DropdownMenuItem>
                                     </>
+                                  )}
+                                  {a.status !== "DRAFT" && (
+                                    <DropdownMenuItem onClick={() => setHistoryFor(a.id)}>
+                                      <History className="h-4 w-4 mr-2" />Marks history
+                                    </DropdownMenuItem>
                                   )}
                                 </DropdownMenuContent>
                               </DropdownMenu>

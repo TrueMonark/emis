@@ -5,6 +5,7 @@ import { assessmentService } from "@/features/assessments/assessment.service";
 import { lessonLogService } from "@/features/lesson-logs/lessonLog.service";
 import { specialClassService } from "@/features/special-classes/specialClass.service";
 import { normalizeToUtcMidnight } from "@/lib/utils/date-utils";
+import { markChangeRepository } from "@/features/assessment-results/markChange.repository";
 import { syncOperationRepository } from "./syncOperation.repository";
 
 /**
@@ -54,6 +55,8 @@ const marksEnter = z.object({
         marksObtained: z.number().min(0),
         isAbsent: z.boolean().optional(),
         remarks: z.string().max(300).nullable().optional(),
+        /** The version of the mark the phone last saw (none: it had no mark) */
+        baseVersion: z.number().int().nullable().optional(),
       })
     )
     .min(1)
@@ -165,7 +168,9 @@ async function markAttendance(p: z.infer<typeof attendanceMark>, ctx: OperationC
 
 /**
  * Marks: rejected once the assessment is completed or its entry window has closed; otherwise
- * entered through the same service as the web (the later entry wins).
+ * entered through the same service as the web. Like attendance, a mark that was changed on the
+ * server after the phone made its change is kept: the phone's mark isn't applied, the marks
+ * history gets a "not applied" line, and the phone is told (Phase 5b).
  */
 async function enterMarks(p: z.infer<typeof marksEnter>, ctx: OperationContext): Promise<Result> {
   const assessment = await syncOperationRepository.findAssessmentForEntry(p.assessmentId);
@@ -179,11 +184,61 @@ async function enterMarks(p: z.infer<typeof marksEnter>, ctx: OperationContext):
       `The marks entry window closed on ${window.closesAt.toLocaleString("en-GB", { timeZone: "Africa/Lusaka" })}`
     );
   }
-  const r = await assessmentService.bulkEnterResults(
-    p.assessmentId,
-    p.results.map((x) => ({ studentId: x.studentId, marksObtained: x.marksObtained, isAbsent: x.isAbsent, remarks: x.remarks ?? undefined })),
-    ctx
-  );
-  if (r.successful === 0 && r.failed.length > 0) throw new OperationRejected(r.failed[0].error);
-  return { applied: r.successful, failed: r.failed };
+  const current = await markChangeRepository.findCurrent(p.assessmentId, p.results.map((x) => x.studentId));
+  const byStudent = new Map(current.map((c) => [c.studentId, c]));
+  const conflicts: { studentId: string; serverMarks: number; serverAbsent: boolean; serverVersion: number; reason: string }[] = [];
+  const kept: typeof current = [];
+  const apply = p.results.filter((x) => {
+    const server = byStudent.get(x.studentId);
+    if (!server) return true;
+    const changedSinceBase = x.baseVersion == null || server.version > x.baseVersion;
+    if (changedSinceBase && server.updatedAt > ctx.madeAt) {
+      kept.push(server);
+      conflicts.push({
+        studentId: x.studentId,
+        serverMarks: server.marksObtained,
+        serverAbsent: server.isAbsent,
+        serverVersion: server.version,
+        reason: "This mark was changed after your phone's change; the newer mark was kept",
+      });
+      return false;
+    }
+    return true;
+  });
+  if (kept.length > 0) {
+    const phone = new Map(p.results.map((x) => [x.studentId, x]));
+    await markChangeRepository.recordNotApplied(
+      kept.map((server) => {
+        const x = phone.get(server.studentId)!;
+        return {
+          resultId: server.id,
+          assessmentId: p.assessmentId,
+          studentId: server.studentId,
+          action: "PHONE_NOT_APPLIED" as const,
+          oldMarks: server.marksObtained,
+          newMarks: x.isAbsent ? 0 : x.marksObtained,
+          oldAbsent: server.isAbsent,
+          newAbsent: x.isAbsent ?? false,
+          oldRemarks: server.remarks,
+          newRemarks: x.remarks ?? null,
+          changedById: ctx.userId,
+          source: "PHONE",
+          note: `Made on the phone at ${ctx.madeAt.toLocaleString("en-GB", { timeZone: "Africa/Lusaka" })}; the mark had been changed since, so it was kept`,
+        };
+      })
+    );
+  }
+  let applied = 0;
+  let failed: { studentId: string; error: string }[] = [];
+  if (apply.length > 0) {
+    const r = await assessmentService.bulkEnterResults(
+      p.assessmentId,
+      apply.map((x) => ({ studentId: x.studentId, marksObtained: x.marksObtained, isAbsent: x.isAbsent, remarks: x.remarks ?? undefined })),
+      ctx
+    );
+    applied = r.successful;
+    failed = r.failed;
+  }
+  if (applied === 0 && conflicts.length === 0 && failed.length > 0) throw new OperationRejected(failed[0].error);
+  return { applied, conflicts, failed };
 }

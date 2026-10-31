@@ -14,7 +14,9 @@ import {
   getTodayUtcMidnight,
 } from "@/lib/utils/date-utils";
 import prisma from "@/lib/db/prisma";
-import { isWeekend, WEEKEND_ATTENDANCE_MESSAGE } from "@school/shared/calendar/weekend";
+import { WEEKEND_ATTENDANCE_MESSAGE } from "@school/shared/calendar/weekend";
+import { HOLIDAY_ATTENDANCE_MESSAGE } from "@school/shared/calendar/zambia-holidays";
+import { calendarService } from "../calendar/calendar.service";
 
 export type ServiceContext = AuthContext & {
   teacherProfileId?: string;
@@ -79,11 +81,14 @@ export class AttendanceRecordService {
     }
   }
 
-  /** No attendance on a weekend: weekend lessons are special classes with their own register. */
-  private validateNotWeekend(date: Date): void {
-    if (isWeekend(normalizeToUtcMidnight(date))) {
-      throw new ValidationError(WEEKEND_ATTENDANCE_MESSAGE);
-    }
+  /**
+   * No attendance on a weekend, a public holiday or a day the school is closed (Phase 5b): a
+   * lesson on such a day is a special class with its own register.
+   */
+  private async validateSchoolDay(date: Date): Promise<void> {
+    const off = await calendarService.nonSchoolDay(normalizeToUtcMidnight(date));
+    if (!off) return;
+    throw new ValidationError(off.kind === "WEEKEND" ? WEEKEND_ATTENDANCE_MESSAGE : HOLIDAY_ATTENDANCE_MESSAGE(calendarService.describe(off)));
   }
 
   private validateDateNotFuture(date: Date): void {
@@ -140,7 +145,7 @@ export class AttendanceRecordService {
     requireMinimumRole(context, Role.TEACHER, "You do not have permission to mark attendance");
     await this.verifySlotOwnership(data.timetableSlotId, data.date, context);
 
-    this.validateNotWeekend(data.date);
+    await this.validateSchoolDay(data.date);
     this.validateDateNotFuture(data.date);
     await this.validateDateInTerm(data.date, data.termId);
     const { term } = await this.validateReferences(data.studentId, data.classId, data.termId);
@@ -211,7 +216,7 @@ export class AttendanceRecordService {
       return { successful: 0, failed };
     }
 
-    this.validateNotWeekend(data.date);
+    await this.validateSchoolDay(data.date);
     this.validateDateNotFuture(data.date);
     await this.validateDateInTerm(data.date, data.termId);
 
@@ -409,7 +414,7 @@ export class AttendanceRecordService {
     if (existingRecord.term.academicYear.isClosed) {
       throw new ValidationError("Cannot update attendance in a closed academic year");
     }
-    this.validateNotWeekend(existingRecord.date);
+    await this.validateSchoolDay(existingRecord.date);
     if (!existingRecord.timetableSlotId) {
       await registerCoverService.assertCanTakeDailyRegister(
         existingRecord.classId,

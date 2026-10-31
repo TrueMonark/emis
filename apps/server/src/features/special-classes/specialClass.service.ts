@@ -1,5 +1,5 @@
 import { isSchoolLeader } from "@school/shared/auth/role-hierarchy";
-import { isWeekend } from "@school/shared/calendar/weekend";
+import { calendarService } from "@/features/calendar/calendar.service";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/lib/http/errors";
 import { getTodayUtcMidnight, normalizeToUtcMidnight } from "@/lib/utils/date-utils";
 import { logger } from "@/lib/logger/logger";
@@ -45,8 +45,11 @@ export class SpecialClassService {
   async create(input: CreateSpecialClassInput, ctx: SpecialClassContext) {
     const teacher = await this.teacherOf(ctx);
     const date = normalizeToUtcMidnight(input.date);
-    if (!isWeekend(date)) {
-      throw new ValidationError("Special classes are for Saturdays and Sundays. Weekday lessons are on the timetable.");
+    // Saturdays and Sundays, public holidays and school closure days (Phase 5b).
+    if (!(await calendarService.nonSchoolDay(date))) {
+      throw new ValidationError(
+        "Special classes are for Saturdays, Sundays, public holidays and closure days. School-day lessons are on the timetable."
+      );
     }
     if (date < getTodayUtcMidnight()) throw new ValidationError("That day has already passed");
 
