@@ -187,7 +187,7 @@ describe("school profiles and returns", () => {
         token: headToken,
         body: { ...FACILITIES, classrooms: -1 },
       });
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(422);
     });
   });
 
@@ -220,7 +220,7 @@ describe("school profiles and returns", () => {
       expect(started.json.data.return?.figures.learners).toEqual({ male: 2, female: 1 });
 
       // No facilities on the profile yet, so the draft can't go.
-      expect((await school(submitReturn, roundId)).status).toBe(400);
+      expect((await school(submitReturn, roundId)).status).toBe(422);
 
       expect((await school(saveDraft, roundId, "PATCH", { facilities: FACILITIES, remarks: "All well" })).status).toBe(200);
       const submitted = await school(submitReturn, roundId);
@@ -229,7 +229,7 @@ describe("school profiles and returns", () => {
       const returnId = submitted.json.data.return!.id;
 
       // With the DEBS now: the school can't change it.
-      expect((await school(saveDraft, roundId, "PATCH", { facilities: FACILITIES })).status).toBe(400);
+      expect((await school(saveDraft, roundId, "PATCH", { facilities: FACILITIES })).status).toBe(422);
 
       // Sending back needs a comment.
       const noComment = await callRoute(reviewReturn, {
@@ -239,7 +239,7 @@ describe("school profiles and returns", () => {
         params: { id: returnId },
         body: { decision: "RETURN" },
       });
-      expect(noComment.status).toBe(400);
+      expect(noComment.status).toBe(422);
       const sentBack = await callRoute<{ data: { status: string } }>(reviewReturn, {
         method: "POST",
         url: `/api/office/school-returns/${returnId}/review`,
@@ -307,7 +307,7 @@ describe("school profiles and returns", () => {
       const reopen = (token: string, comment: string) =>
         callRoute(reopenReturn, { method: "POST", url: `/api/office/school-returns/${returnId}/reopen`, token, params: { id: returnId }, body: { comment } });
       expect((await reopen(debsOfficerToken, "Wrong figures")).status).toBe(403);
-      expect((await reopen(debsToken, "")).status).toBe(400);
+      expect((await reopen(debsToken, "")).status).toBe(422);
       expect((await reopen(debsToken, "Wrong figures")).status).toBe(200);
     });
 
@@ -316,7 +316,11 @@ describe("school profiles and returns", () => {
       await callRoute(saveFacilities, { method: "PUT", url: "/api/school/profile/facilities", token: headToken, body: FACILITIES });
       await school(startReturn, roundId);
       const [a, b] = await Promise.all([school(submitReturn, roundId), school(submitReturn, roundId)]);
-      expect([a.status, b.status].sort()).toEqual([200, 409]);
+      // The second is refused either while both are in flight (409) or after the first has
+      // finished (422, "it's with the DEBS"); either way only one submission is recorded.
+      const statuses = [a.status, b.status].sort();
+      expect(statuses[0]).toBe(200);
+      expect([409, 422]).toContain(statuses[1]);
       const events = await systemPrisma.schoolReturnEvent.count({ where: { action: "SUBMITTED" } });
       expect(events).toBe(1);
     });
@@ -327,7 +331,7 @@ describe("school profiles and returns", () => {
         callRoute(setRoundStatus, { method: "PATCH", url: `/api/office/returns/${roundId}`, token, params: { id: roundId }, body: { status } });
       expect((await patch(peoToken, "CLOSED")).status).toBe(403);
       expect((await patch(debsToken, "CLOSED")).status).toBe(200);
-      expect((await school(startReturn, roundId)).status).toBe(400);
+      expect((await school(startReturn, roundId)).status).toBe(422);
     });
 
     it("an HQ round reaches every school; a district's round doesn't reach other districts", async () => {

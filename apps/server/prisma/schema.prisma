@@ -1707,7 +1707,8 @@ model ChangeLog {
   op        String
   /// Transaction that made the change (pg_current_xact_id); the sync cursor is built on it
   txid      BigInt
-  changedAt DateTime @default(now())
+  /// UTC, filled in by the database (trigger rows)
+  changedAt DateTime @default(dbgenerated("timezone('UTC'::text, now())"))
   /// User who made the change (app.user_id), when known
   changedBy String?
 
@@ -1969,7 +1970,8 @@ model MarkChange {
   /// WEB, PHONE or SYSTEM
   source       String
   note         String?
-  changedAt    DateTime         @default(now())
+  /// UTC, filled in by the database (the trigger's lines and the app's alike)
+  changedAt    DateTime         @default(dbgenerated("timezone('UTC'::text, now())"))
 
   @@index([schoolId])
   @@index([assessmentId, studentId, changedAt])

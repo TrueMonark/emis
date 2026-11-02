@@ -106,6 +106,14 @@ describe("marks history", () => {
     expect((await changes()).json.data.changes[0]).toMatchObject({ action: "DELETED", oldMarks: 35 });
   });
 
+  it("records the time in UTC, whatever time zone the database server runs in", async () => {
+    // The trigger's lines used the server's local time (two hours ahead on a server set to
+    // Zambian time) until 1 November 2026; they must match the app's own clock.
+    await enter(40);
+    const line = await prisma.markChange.findFirstOrThrow({ where: { assessmentId }, orderBy: { changedAt: "desc" } });
+    expect(Math.abs(line.changedAt.getTime() - Date.now())).toBeLessThan(5 * 60 * 1000);
+  });
+
   it("from a phone: applied changes are marked PHONE; an older phone change doesn't overwrite a newer mark", async () => {
     await enter(40); // on the web, now
     const row = await prisma.studentAssessmentResult.findFirstOrThrow({ where: { assessmentId } });
