@@ -36,6 +36,7 @@ model AcademicYear {
 
   fees                      Fee[]
   feeDiscounts              FeeDiscount[]
+  sbaSheets                 SbaSheet[]
   @@unique([schoolId, year])
   @@index([schoolId])
   @@map("academic_years")
@@ -211,6 +212,7 @@ model Class {
   timetableSlots            TimetableSlot[]
 
   feeTargets                FeeTarget[]
+  sbaSheets                 SbaSheet[]
   @@unique([schoolId, gradeId, name])
   @@index([gradeId, status])
   @@index([schoolId])
@@ -248,6 +250,7 @@ model Subject {
   timetableSlots            TimetableSlot[]
 
   specialClasses     SpecialClass[]
+  sbaSheets                 SbaSheet[]
   @@unique([schoolId, code])
   @@index([departmentId])
   @@index([schoolId])
@@ -340,6 +343,9 @@ model Student {
   feeCharges         FeeCharge[]
   feeDiscounts       FeeDiscount[]
   feePayments        FeePayment[]
+  sbaMarks           SbaMark[]
+  sbaLearnerNotes    SbaLearnerNote[]
+
   @@unique([schoolId, studentNumber])
   @@index([status])
   @@index([studentNumber])
@@ -527,6 +533,7 @@ model TeacherProfile {
   specialClasses            SpecialClass[]             @relation("SpecialClassTeacher")
   specialClassMarks         SpecialClassAttendance[]   @relation("SpecialClassMarker")
 
+  sbaSheets                 SbaSheet[]
   @@index([staffNumber])
   @@index([status])
   @@map("teacher_profiles")
@@ -584,6 +591,7 @@ model EducationOffice {
   schools   School[]
   memberships OfficeMembership[]
   returnRounds ReturnRound[]
+  announcements Announcement[]
 
   @@index([parentId])
   @@index([type])
@@ -608,6 +616,8 @@ model School {
   /// School fees module (the Finance role and its pages). Always on for private schools; the
   /// DEBS can switch it on for others (e.g. community schools charging PTA fees).
   feesEnabled      Boolean          @default(false)
+  /// ECZ examination centre code (on SBA score sheets); set by the head on the School profile page
+  eczCentreCode    String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   districtOffice   EducationOffice  @relation(fields: [districtOfficeId], references: [id])
@@ -663,6 +673,12 @@ model School {
   notifications              Notification[]
   facilities                 SchoolFacilities?
   returns                    SchoolReturn[]
+  announcementReads          AnnouncementRead[]
+  sbaSheets                  SbaSheet[]
+  sbaTasks                   SbaTask[]
+  sbaMarks                   SbaMark[]
+  sbaLearnerNotes            SbaLearnerNote[]
+  sbaSheetEvents             SbaSheetEvent[]
 
   @@index([districtOfficeId])
   @@map("schools")
@@ -2331,5 +2347,196 @@ enum ReturnEventAction {
   SUBMITTED
   RETURNED
   APPROVED
+  REOPENED
+}
+
+// ── Phase 8 (2 November 2026): announcements from the education offices ─────────────────────
+
+/// A circular from HQ, a PEO or a DEBS to every active school in its area: to the head teachers
+/// and deputies only, or to all staff. Never edited once posted; the office can withdraw it.
+/// National table (like return rounds): who may read it is decided in announcement.service.ts.
+model Announcement {
+  id             String                   @id @default(cuid())
+  officeId       String
+  office         EducationOffice          @relation(fields: [officeId], references: [id])
+  title          String
+  body           String
+  audience       AnnouncementAudience
+  /// The head or deputy of each school must press "Acknowledge"
+  requiresAck    Boolean                  @default(false)
+  publishedById  String
+  publishedAt    DateTime                 @default(now())
+  withdrawnAt    DateTime?
+  withdrawnById  String?
+  withdrawReason String?
+  attachments    AnnouncementAttachment[]
+  reads          AnnouncementRead[]
+
+  @@index([officeId, publishedAt])
+  @@map("announcements")
+}
+
+enum AnnouncementAudience {
+  /// Head teachers and deputies
+  LEADERS
+  /// Everyone working at the schools
+  ALL_STAFF
+}
+
+/// A file sent with an announcement (PDF or image), kept in PRIVATE_FILES_DIR under `storageKey`.
+model AnnouncementAttachment {
+  id             String       @id @default(cuid())
+  announcementId String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  storageKey     String       @unique
+  createdAt      DateTime     @default(now())
+
+  @@index([announcementId])
+  @@map("announcement_attachments")
+}
+
+/// Who has opened an announcement (and, when asked for, acknowledged it), with their school.
+model AnnouncementRead {
+  announcementId String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId         String
+  schoolId       String
+  school         School       @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  readAt         DateTime     @default(now())
+  acknowledgedAt DateTime?
+
+  @@id([announcementId, userId])
+  @@index([announcementId, schoolId])
+  @@index([userId])
+  @@map("announcement_reads")
+}
+
+// ── Phase 9b (4 November 2026): School Based Assessment (SBA) score sheets ──────────────────
+
+/// One teacher's SBA sheet for a subject in a class for one school year: six tasks (two per
+/// term), each marked out of what the teacher sets. Teacher submits → HOD approves (or sends
+/// back) → head teacher confirms. School-owned (row-level security).
+model SbaSheet {
+  id             String         @id @default(cuid())
+  schoolId       String         @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school         School         @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  academicYearId String
+  academicYear   AcademicYear   @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  classId        String
+  class          Class          @relation(fields: [classId], references: [id], onDelete: Restrict)
+  subjectId      String
+  subject        Subject        @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  teacherId      String
+  teacher        TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  status         SbaSheetStatus @default(DRAFT)
+  submittedAt    DateTime?
+  hodDecidedAt   DateTime?
+  hodDecidedById String?
+  reviewComment  String?
+  confirmedAt    DateTime?
+  confirmedById  String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  tasks          SbaTask[]
+  notes          SbaLearnerNote[]
+  events         SbaSheetEvent[]
+
+  @@unique([academicYearId, classId, subjectId, teacherId])
+  @@index([schoolId])
+  @@index([teacherId])
+  @@index([classId, subjectId])
+  @@map("sba_sheets")
+}
+
+enum SbaSheetStatus {
+  DRAFT
+  SUBMITTED
+  RETURNED
+  HOD_APPROVED
+  CONFIRMED
+}
+
+/// One of the six tasks (1–2 in Term 1, 3–4 in Term 2, 5–6 in Term 3).
+model SbaTask {
+  id          String    @id @default(cuid())
+  schoolId    String    @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school      School    @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  sheetId     String
+  sheet       SbaSheet  @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  number      Int
+  title       String
+  description String?
+  maxMarks    Float
+  dueDate     DateTime? @db.Date
+  marks       SbaMark[]
+
+  @@unique([sheetId, number])
+  @@index([schoolId])
+  @@map("sba_tasks")
+}
+
+/// A learner's mark for a task (absent = didn't do it).
+model SbaMark {
+  id        String   @id @default(cuid())
+  schoolId  String   @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  taskId    String
+  task      SbaTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  marks     Float?
+  isAbsent  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@unique([taskId, studentId])
+  @@index([schoolId])
+  @@index([studentId])
+  @@map("sba_marks")
+}
+
+/// Per learner on a sheet: the ECZ examination number and the teacher's overall comment.
+model SbaLearnerNote {
+  id                String   @id @default(cuid())
+  schoolId          String   @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school            School   @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  sheetId           String
+  sheet             SbaSheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  studentId         String
+  student           Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  examinationNumber String?
+  comment           String?
+  updatedAt         DateTime @updatedAt
+
+  @@unique([sheetId, studentId])
+  @@index([schoolId])
+  @@map("sba_learner_notes")
+}
+
+/// Every step of a sheet (who, when, comment). Only ever added to.
+model SbaSheetEvent {
+  id       String          @id @default(cuid())
+  schoolId String          @default(dbgenerated("current_setting('app.school_id'::text, true)"))
+  school   School          @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  sheetId  String
+  sheet    SbaSheet        @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  action   SbaEventAction
+  byUserId String?
+  comment  String?
+  at       DateTime        @default(now())
+
+  @@index([sheetId, at])
+  @@index([schoolId])
+  @@map("sba_sheet_events")
+}
+
+enum SbaEventAction {
+  STARTED
+  SUBMITTED
+  RETURNED
+  HOD_APPROVED
+  CONFIRMED
   REOPENED
 }

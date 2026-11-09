@@ -6,6 +6,7 @@ import { Loader2, Save } from "lucide-react";
 import { Button } from "@school/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@school/ui/components/card";
 import { Label } from "@school/ui/components/label";
+import { Input } from "@school/ui/components/input";
 import { Textarea } from "@school/ui/components/textarea";
 import { Skeleton } from "@school/ui/components/skeleton";
 import { EMPTY_FACILITIES, type FacilitiesData } from "@school/shared/returns/indicators";
@@ -28,6 +29,8 @@ export default function SchoolProfilePage() {
   const [facilities, setFacilities] = useState<FacilitiesData>(EMPTY_FACILITIES);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [centreCode, setCentreCode] = useState("");
+  const [savingCode, setSavingCode] = useState(false);
 
   const load = useCallback(() => {
     api
@@ -36,6 +39,7 @@ export default function SchoolProfilePage() {
         setData(data);
         setFacilities(data.facilities);
         setNotes(data.facilitiesNotes ?? "");
+        setCentreCode(data.school.eczCentreCode ?? "");
       })
       .catch((e) => toast.error(getErrorMessage(e)));
   }, [period]);
@@ -54,6 +58,18 @@ export default function SchoolProfilePage() {
     }
   };
 
+  const saveCentreCode = async () => {
+    setSavingCode(true);
+    try {
+      await api.put("/school/profile/centre-code", { eczCentreCode: centreCode || null });
+      toast.success("ECZ centre code saved");
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    } finally {
+      setSavingCode(false);
+    }
+  };
+
   const facilitiesCard = (
     <Card>
       <CardHeader className="pb-2">
@@ -64,6 +80,17 @@ export default function SchoolProfilePage() {
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="space-y-1 rounded-md border p-3">
+          <Label htmlFor="ecz-code">ECZ examination centre code</Label>
+          <div className="flex gap-2">
+            <Input id="ecz-code" value={centreCode} onChange={(e) => setCentreCode(e.target.value)} placeholder="Printed on SBA score sheets" disabled={!data?.canEdit} />
+            {data?.canEdit && (
+              <Button variant="outline" onClick={saveCentreCode} disabled={savingCode}>
+                {savingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+              </Button>
+            )}
+          </div>
+        </div>
         <FacilitiesForm value={facilities} onChange={setFacilities} disabled={!data?.canEdit} />
         <div className="space-y-1">
           <Label htmlFor="fac-notes">Notes (optional)</Label>

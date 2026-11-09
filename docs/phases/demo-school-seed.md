@@ -37,6 +37,12 @@ recordings. (It replaced the earlier Kaliwe Heights demo on 18 October 2026.)
   - the PTA levy, Grade 12 exam fees, a Form 2 trip (only those signed up) and sports day;
   - sibling discounts and a few bursaries;
   - about a year of payments with receipts: most families paid up, some part-paid, some behind.
+- **School profile and returns** (since 31 October 2026): Cranes's facilities, and two returns
+  waiting (HQ's 2026 census and the DEBS's Term 3 return).
+- **Announcements** (since 2 November 2026): one from HQ to all staff, and one from the DEBS to
+  the head and deputy asking for an acknowledgement.
+- **SBA** (since 4 November 2026): Esther Banda's Maths sheet for her Form class on the 2023
+  curriculum, with Terms 1–2 tasks marked and Term 3 open.
 - **Messages:** SMS history (simulated; nothing is sent) and staff notifications.
 - **Sign-in by mobile:** every account has its own made-up mobile number, so it can also sign
   in with that number.

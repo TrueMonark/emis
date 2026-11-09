@@ -12,6 +12,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
@@ -30,11 +31,18 @@ export interface NavItem {
   icon?: LucideIcon;
   isActive?: boolean;
   items?: NavSubItem[];
+  /** A small count beside the link (e.g. unread announcements); hidden when 0 or missing */
+  badge?: number;
 }
 
 export interface NavSubItem {
   title: string;
   url: string;
+}
+
+/** The same groups with a count shown beside the link to `url` (e.g. unread announcements). */
+export function withBadge(groups: NavGroup[], url: string, badge: number): NavGroup[] {
+  return groups.map((g) => ({ ...g, items: g.items.map((i) => (i.url === url ? { ...i, badge } : i)) }));
 }
 
 export function NavMain({ groups }: { groups: NavGroup[] }) {
@@ -91,6 +99,7 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
+                  {!!item.badge && item.badge > 0 && <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>}
                 </SidebarMenuItem>
               );
             })}

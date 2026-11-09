@@ -36,7 +36,9 @@ export type AuditAction =
   | "RETURN_SUBMITTED"
   | "RETURN_APPROVED"
   | "RETURN_SENT_BACK"
-  | "RETURN_REOPENED";
+  | "RETURN_REOPENED"
+  | "ANNOUNCEMENT_POSTED"
+  | "ANNOUNCEMENT_WITHDRAWN";
 
 export interface AuditEntry {
   action: AuditAction;

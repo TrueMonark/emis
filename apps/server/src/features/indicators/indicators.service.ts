@@ -265,6 +265,7 @@ export class IndicatorsService {
         emisNumber: school.emisNumber,
         category: school.category,
         agency: school.agency,
+        eczCentreCode: school.eczCentreCode,
         district: school.districtOffice.name,
         inSetup: !school.setupCompletedAt,
       },

@@ -17,6 +17,7 @@ import { FacilitiesSummaryView } from "@/components/returns/facilities";
 import { FiguresView, KeyIndicatorsTable } from "@/components/returns/figures-view";
 import { FIGURES_CSV_HEADER, downloadCsv, figuresCsvCells } from "@/components/returns/csv";
 import { day, num, pct, per } from "@/components/returns/format";
+import { StatTile } from "@/components/offices/stat-tile";
 import type { Dashboard } from "@/components/returns/types";
 
 const ROW_LABEL = { PROVINCE: "Province", DISTRICT: "District", SCHOOL: "School" } as const;
@@ -107,22 +108,10 @@ function ProfilesDashboard() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { label: "Schools", value: num(data.total.schools), icon: School },
-              { label: `Learners (${pct(data.total.derived.girlsPercent)} girls)`, value: num(data.total.derived.learners), icon: Users },
-              { label: `Teachers · ${per(data.total.derived.pupilTeacherRatio)} learners each`, value: num(data.total.derived.teachers), icon: GraduationCap },
-              { label: `Attendance · registers taken ${pct(data.total.derived.registersPercent)}`, value: pct(data.total.derived.attendancePercent), icon: CalendarCheck },
-            ].map((t) => (
-              <Card key={t.label}>
-                <CardContent className="flex items-center gap-3 p-4">
-                  <t.icon className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-2xl font-semibold tabular-nums">{t.value}</p>
-                    <p className="text-xs text-muted-foreground">{t.label}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            <StatTile label="Schools" value={num(data.total.schools)} icon={School} accent="green" />
+            <StatTile label="Learners" value={num(data.total.derived.learners)} detail={`${pct(data.total.derived.girlsPercent)} girls`} icon={Users} accent="orange" />
+            <StatTile label="Teachers" value={num(data.total.derived.teachers)} detail={`${per(data.total.derived.pupilTeacherRatio)} learners per teacher`} icon={GraduationCap} accent="black" />
+            <StatTile label="Attendance" value={pct(data.total.derived.attendancePercent)} detail={`registers taken ${pct(data.total.derived.registersPercent)}`} icon={CalendarCheck} accent="red" />
           </div>
 
           <Card>

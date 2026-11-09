@@ -4,6 +4,8 @@ import { notifyDataChanged } from "./events";
 import { todayIso } from "./dates";
 import { mustGoOnline, offlineDays } from "./sync";
 import {
+  announcementAckKey,
+  announcementReadKey,
   attendanceKey,
   classLabel,
   logKey,
@@ -149,5 +151,24 @@ export function saveSpecialRegister(sc: SpecialClass, marks: { studentId: string
     newOp("specialClass.register", { specialClassId: sc.id, records: marks }, `Special class register: ${sc.topic}, ${classLabel(sc.classId)}`),
     marks.map((m) => ({ key: specialKey(sc.id, m.studentId), value: { status: m.status } }))
   );
+  notifyDataChanged();
+}
+
+// ── Announcements (Phase 9c): opening and acknowledging work offline too ───────────────────
+
+/** Record that this announcement was opened (once; sent with the next sync). */
+export function markAnnouncementRead(id: string, alreadyRead: boolean) {
+  if (alreadyRead) return;
+  enqueue(newOp("announcement.read", { announcementId: id }, "Announcement opened"), [
+    { key: announcementReadKey(id), value: { at: new Date().toISOString() } },
+  ]);
+  notifyDataChanged();
+}
+
+/** The head teacher or deputy acknowledges an announcement for the school. */
+export function acknowledgeAnnouncement(id: string, title: string) {
+  enqueue(newOp("announcement.acknowledge", { announcementId: id }, `Acknowledged: ${title}`), [
+    { key: announcementAckKey(id), value: { at: new Date().toISOString() } },
+  ]);
   notifyDataChanged();
 }

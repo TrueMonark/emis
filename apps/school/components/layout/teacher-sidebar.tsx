@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { NavMain } from "@/components/layout/nav-main";
+import { NavMain, withBadge, type NavGroup } from "@/components/layout/nav-main";
+import { useAnnouncementCounts } from "@/hooks/useAnnouncementCounts";
 import {
   BookOpen,
   Home,
@@ -14,6 +15,8 @@ import {
   BarChart3,
   Clock,
   CalendarPlus,
+  Megaphone,
+  ScrollText,
 } from "lucide-react";
 import {
   Sidebar,
@@ -42,10 +45,15 @@ interface TeacherSidebarProps extends React.ComponentProps<typeof Sidebar> {
   };
 }
 
-const teacherNavGroups = [
+const teacherNavGroups: NavGroup[] = [
   {
     label: "Overview",
     items: [
+      {
+        title: "Announcements",
+        url: "/teacher/announcements",
+        icon: Megaphone,
+      },
       {
         title: "Dashboard",
         url: "/teacher",
@@ -92,6 +100,11 @@ const teacherNavGroups = [
         icon: ClipboardList,
       },
       {
+        title: "SBA score sheets",
+        url: "/teacher/sba",
+        icon: ScrollText,
+      },
+      {
         title: "Lesson Plans",
         url: "/teacher/lesson-plans",
         icon: Clock,
@@ -111,6 +124,7 @@ const teacherNavGroups = [
 ];
 
 export function TeacherSidebar({ user, ...props }: TeacherSidebarProps) {
+  const { attention } = useAnnouncementCounts();
   const formatRole = (role: string) => {
     return role
       .split("_")
@@ -146,7 +160,7 @@ export function TeacherSidebar({ user, ...props }: TeacherSidebarProps) {
         <SidebarHeaderContent />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain groups={teacherNavGroups} />
+        <NavMain groups={withBadge(teacherNavGroups, "/teacher/announcements", attention)} />
       </SidebarContent>
       <SidebarFooter>
         <ContextSwitcher userRole={user?.role} />

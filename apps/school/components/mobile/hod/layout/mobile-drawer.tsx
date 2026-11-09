@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Users, FileText, Grid3X3, LogOut, Webhook, GraduationCap } from "lucide-react";
+import { Home, Users, FileText, Grid3X3, LogOut, Webhook, GraduationCap, Megaphone, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -20,6 +20,8 @@ const drawerNavItems = [
   { title: "Students",    href: "/hod/students",     icon: Users,     exact: false },
   { title: "Subjects",    href: "/hod/subjects",     icon: FileText,  exact: false },
   { title: "Assignments", href: "/hod/assignments",  icon: Grid3X3,   exact: false },
+  { title: "Announcements", href: "/teacher/announcements", icon: Megaphone, exact: false },
+  { title: "SBA", href: "/teacher/sba", icon: ScrollText, exact: false },
 ];
 
 interface MobileHodDrawerProps {

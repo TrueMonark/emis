@@ -19,6 +19,23 @@ export interface NonSchoolDay {
   name: string;
 }
 
+/** An announcement from the offices (Phase 9c); kept whole on the phone, replaced on every sync. */
+export interface PhoneAnnouncement {
+  id: string;
+  title: string;
+  body: string;
+  audience: "LEADERS" | "ALL_STAFF";
+  requiresAck: boolean;
+  office: { name: string; type: "HQ" | "PROVINCIAL" | "DISTRICT" };
+  publishedAt: string;
+  withdrawnAt: string | null;
+  withdrawReason: string | null;
+  attachments: { fileName: string; sizeBytes: number }[];
+  readAt: string | null;
+  schoolAcknowledged: { at: string; by: string | null } | null;
+  canAcknowledge: boolean;
+}
+
 interface Snapshot {
   cursor: string;
   scope: string;
@@ -26,6 +43,7 @@ interface Snapshot {
   settings: { offlineDays: number };
   me: { userId: string; teacherProfileId: string; name: string };
   calendar?: { from: string; to: string; nonSchoolDays: NonSchoolDay[] };
+  announcements?: PhoneAnnouncement[];
   data: Record<string, Row[]>;
 }
 type Changes =
@@ -37,6 +55,7 @@ type Changes =
       hasMore: boolean;
       changes: { entity: string; id: string; op: "UPSERT" | "DELETE"; record?: Row }[];
       calendar?: { from: string; to: string; nonSchoolDays: NonSchoolDay[] };
+      announcements?: PhoneAnnouncement[];
     };
 interface PushAnswer {
   results: { opId: string; status: "applied" | "rejected" | "in_progress"; duplicate?: boolean; error?: string; result?: unknown }[];
@@ -72,6 +91,7 @@ export const lastSyncAt = () => getMeta<string>("lastSyncAt");
 export const offlineDays = () => getMeta<number>("offlineDays") ?? 14;
 export const me = () => getMeta<Snapshot["me"]>("me");
 export const nonSchoolDays = () => getMeta<NonSchoolDay[]>("calendar") ?? [];
+export const storedAnnouncements = () => getMeta<PhoneAnnouncement[]>("announcements") ?? [];
 
 /** True once the app has been offline longer than the school allows: it must sync once. */
 export function mustGoOnline(now = Date.now()): boolean {
@@ -137,6 +157,10 @@ function saveCalendar(calendar: Snapshot["calendar"]) {
   if (calendar) setMeta("calendar", calendar.nonSchoolDays);
 }
 
+function saveAnnouncements(list: Snapshot["announcements"]) {
+  if (list) setMeta("announcements", list);
+}
+
 async function snapshot(session: Session) {
   const snap = await call<Snapshot>(session, "/sync/snapshot", { timeoutMs: 120_000 });
   replaceAll(snap.data);
@@ -145,6 +169,7 @@ async function snapshot(session: Session) {
   setMeta("me", snap.me);
   setMeta("offlineDays", snap.settings.offlineDays);
   saveCalendar(snap.calendar);
+  saveAnnouncements(snap.announcements);
 }
 
 async function pull(session: Session) {
@@ -164,6 +189,7 @@ async function pull(session: Session) {
       else if (c.record) putRecords(c.entity, [c.record]);
     }
     saveCalendar(res.calendar);
+    saveAnnouncements(res.announcements);
     next = res.cursor;
     setMeta("cursor", next); // only after the page is applied
     if (!res.hasMore) return;

@@ -53,16 +53,7 @@ export class ReturnsRepository {
     return prisma.educationOffice.findUnique({ where: { id }, select: { id: true, name: true, type: true, parentId: true } });
   }
 
-  findHqIds() {
-    return prisma.educationOffice.findMany({ where: { type: "HQ" }, select: { id: true } }).then((r) => r.map((o) => o.id));
-  }
 
-  findSchoolDistrict(schoolId: string) {
-    return prisma.school.findUnique({
-      where: { id: schoolId },
-      select: { id: true, name: true, districtOfficeId: true, districtOffice: { select: { parentId: true } } },
-    });
-  }
 
   /** Active schools in `where`, with their district (for grouping). */
   findSchools(where: Prisma.SchoolWhereInput) {

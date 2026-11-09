@@ -33,7 +33,7 @@ export interface Dashboard {
 
 export interface SchoolProfile {
   period: { from: string; to: string };
-  school: { id: string; name: string; emisNumber: string | null; category: string; agency: string | null; district: string; inSetup: boolean };
+  school: { id: string; name: string; emisNumber: string | null; category: string; agency: string | null; eczCentreCode?: string | null; district: string; inSetup: boolean };
   leaders?: { role: string; name: string; phone: string | null }[];
   figures: ReturnFigures;
   facilities: FacilitiesData;

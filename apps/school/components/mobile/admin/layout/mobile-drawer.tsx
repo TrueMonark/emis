@@ -5,8 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Home, CalendarCheck, ClipboardList, Calendar,
   FileCheck, Building2, FileText, UserCheck,
-  Settings, LogOut, Webhook, CalendarDays, Wallet, Landmark, ClipboardCheck,
-} from "lucide-react";
+  Settings, LogOut, Webhook, CalendarDays, Wallet, Landmark, ClipboardCheck, Megaphone, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -31,6 +30,8 @@ const drawerNavItems = [
   { title: "Parents",      href: "/admin/parents",            icon: UserCheck,     exact: false },
   { title: "School profile", href: "/admin/school-profile",   icon: Landmark,      exact: false },
   { title: "Returns",      href: "/admin/returns",            icon: ClipboardCheck, exact: false },
+  { title: "Announcements", href: "/admin/announcements", icon: Megaphone, exact: false },
+  { title: "SBA", href: "/admin/sba", icon: ScrollText, exact: false },
 ];
 
 interface MobileAdminDrawerProps {

@@ -958,6 +958,77 @@ async function seedDemoSchool() {
   });
   console.log("✅ School facilities, and two returns waiting (HQ census, DEBS Term 3 return)");
 
+  // ── Announcements (Phase 8): one from HQ to all staff, one from the DEBS to the head and
+  //    deputy asking for an acknowledgement. Neither opened yet. (No attachments: those are
+  //    real files in PRIVATE_FILES_DIR; try them from the office page.)
+  await systemPrisma.announcement.createMany({
+    data: [
+      {
+        officeId: "office-hq",
+        title: "Examination period reminders",
+        body:
+          "All staff are reminded that the national examinations period runs into December.\n\n" +
+          "Keep examination rooms ready, follow the invigilation timetable, and report any irregularity to the head teacher at once.",
+        audience: "ALL_STAFF",
+        requiresAck: false,
+        publishedById: hqHeadId.id,
+        publishedAt: d("2026-10-26"),
+      },
+      {
+        officeId: DEMO_DISTRICT.id,
+        title: "Circular 7/2026: Term 3 returns due",
+        body:
+          "Head teachers are asked to complete the Term 3 return in the system by the due date shown on the Returns page.\n\n" +
+          "Please acknowledge this circular so the office knows it has been received.",
+        audience: "LEADERS",
+        requiresAck: true,
+        publishedById: debsHeadId.id,
+        publishedAt: d("2026-10-28"),
+      },
+    ],
+  });
+  console.log("✅ Two announcements (HQ to all staff; DEBS to the head and deputy, acknowledgement asked)");
+
+  // ── SBA (Phase 9b): Esther Banda's Maths sheet for a Form class on the 2023 curriculum, with
+  //    the Term 1 and Term 2 tasks marked and the Term 3 tasks still open (a draft).
+  const sbaAssignment = await prisma.subjectTeacherAssignment.findFirst({
+    where: { teacherId: profileIdByKey["ebanda"], academicYearId: year.id, class: { grade: { stage: "O_LEVEL", curriculum: "CBC_2023" } } },
+    select: { classId: true, subjectId: true },
+  });
+  if (sbaAssignment) {
+    const TASKS = [
+      { number: 1, title: "Number bases investigation", maxMarks: 20, dueDate: d("2026-02-20") },
+      { number: 2, title: "Algebra project", maxMarks: 30, dueDate: d("2026-03-27") },
+      { number: 3, title: "Geometry practical", maxMarks: 20, dueDate: d("2026-06-12") },
+      { number: 4, title: "Statistics survey", maxMarks: 40, dueDate: d("2026-07-24") },
+      { number: 5, title: "Task 5", maxMarks: 25, dueDate: null },
+      { number: 6, title: "Task 6", maxMarks: 50, dueDate: null },
+    ];
+    const sheet = await prisma.sbaSheet.create({
+      data: {
+        academicYearId: year.id,
+        classId: sbaAssignment.classId,
+        subjectId: sbaAssignment.subjectId,
+        teacherId: profileIdByKey["ebanda"],
+        tasks: { create: TASKS },
+        events: { create: { action: "STARTED", byUserId: userIdByKey["ebanda"], at: d("2026-01-26") } },
+      },
+      include: { tasks: true },
+    });
+    const learners = studentsByClass[sbaAssignment.classId] ?? [];
+    await prisma.sbaMark.createMany({
+      data: sheet.tasks
+        .filter((t) => t.number <= 4)
+        .flatMap((t) =>
+          learners.map((st) => {
+            const absent = chance(0.03);
+            return { taskId: t.id, studentId: st.id, isAbsent: absent, marks: absent ? null : Math.max(0, Math.min(t.maxMarks, Math.round(t.maxMarks * (0.45 + 0.4 * rand())))) };
+          })
+        ),
+    });
+    console.log(`✅ SBA: Esther Banda's Maths sheet (${learners.length} learners, tasks 1–4 marked)`);
+  }
+
   // ── Marks history (Phase 5b): a few corrections by Esther Banda, one from her phone, so the
   //    history isn't only the seed's own entries.
   {

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { announcementService } from "@/features/announcements/announcement.service";
 import type { Prisma, Role } from "@prisma/client";
 import { attendanceRecordService } from "@/features/attendance/attendanceRecord.service";
 import { assessmentService } from "@/features/assessments/assessment.service";
@@ -70,7 +71,16 @@ const lessonLogSave = z.object({
   subtopics: z.string().max(1000).nullable().optional(),
 });
 
-export const OPERATION_TYPES = ["attendance.mark", "specialClass.register", "marks.enter", "lessonLog.save"] as const;
+const announcementRef = z.object({ announcementId: z.string().min(1) });
+
+export const OPERATION_TYPES = [
+  "attendance.mark",
+  "specialClass.register",
+  "marks.enter",
+  "lessonLog.save",
+  "announcement.read",
+  "announcement.acknowledge",
+] as const;
 export type OperationType = (typeof OPERATION_TYPES)[number];
 
 export interface OperationContext {
@@ -105,6 +115,11 @@ export async function runOperation(type: OperationType, payload: unknown, ctx: O
       );
       return { lessonLogId: log.id };
     }
+    // Phase 9c: announcements opened or acknowledged on the phone (the same service as the web).
+    case "announcement.read":
+      return announcementService.markRead(ctx, parse(announcementRef, payload).announcementId);
+    case "announcement.acknowledge":
+      return announcementService.acknowledge(ctx, parse(announcementRef, payload).announcementId);
   }
 }
 

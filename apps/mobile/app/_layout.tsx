@@ -42,6 +42,7 @@ function Signed() {
       <Stack.Screen name="class/[id]" options={{ title: "Class" }} />
       <Stack.Screen name="special-classes" options={{ title: "Special classes" }} />
       <Stack.Screen name="settings" options={{ title: "Reminders & appearance" }} />
+      <Stack.Screen name="announcements" options={{ title: "Announcements" }} />
     </Stack>
   );
 }

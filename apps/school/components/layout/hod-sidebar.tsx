@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { NavMain } from "@/components/layout/nav-main";
+import { NavMain, withBadge, type NavGroup } from "@/components/layout/nav-main";
+import { useAnnouncementCounts } from "@/hooks/useAnnouncementCounts";
 import {
   BookOpen,
   GraduationCap,
@@ -13,6 +14,8 @@ import {
   BarChart3,
   Grid3X3,
   CalendarPlus,
+  Megaphone,
+  ScrollText,
 } from "lucide-react";
 import {
   Sidebar,
@@ -40,10 +43,15 @@ interface HodSidebarProps extends React.ComponentProps<typeof Sidebar> {
   };
 }
 
-const hodNavGroups = [
+const hodNavGroups: NavGroup[] = [
   {
     label: "Overview",
     items: [
+      {
+        title: "Announcements",
+        url: "/teacher/announcements",
+        icon: Megaphone,
+      },
       {
         title: "Dashboard",
         url: "/hod",
@@ -85,6 +93,11 @@ const hodNavGroups = [
         icon: ClipboardList,
       },
       {
+        title: "SBA score sheets",
+        url: "/teacher/sba",
+        icon: ScrollText,
+      },
+      {
         title: "Weekend classes",
         url: "/hod/weekend-classes",
         icon: CalendarPlus,
@@ -99,6 +112,7 @@ const hodNavGroups = [
 ];
 
 export function HodSidebar({ user, ...props }: HodSidebarProps) {
+  const { attention } = useAnnouncementCounts();
   const formatRole = (role: string) => {
     return role
       .split("_")
@@ -133,7 +147,7 @@ export function HodSidebar({ user, ...props }: HodSidebarProps) {
         <SidebarHeaderContent />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain groups={hodNavGroups} />
+        <NavMain groups={withBadge(hodNavGroups, "/teacher/announcements", attention)} />
       </SidebarContent>
       <SidebarFooter>
         <ContextSwitcher userRole={user?.role} />

@@ -65,6 +65,9 @@ dist/
 # uploaded files (school logo) — real data, lives on the server only
 apps/server/uploads/
 uploads/
+# private files (announcement attachments) — real data, never served publicly
+apps/server/private-files/
+private-files/
 
 # Passenger restart trigger (created by scripts/restart-app.cjs)
 /tmp/

@@ -6,6 +6,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@school/ui/compon
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { OfficeSidebar, type OfficePerson } from "@/components/offices/office-sidebar";
 import { OfficeContextProvider } from "@/components/offices/office-context";
+import { FlagStripe } from "@/components/offices/flag-stripe";
 import { api, getAuthToken } from "@/lib/api-client";
 
 interface Me extends OfficePerson {
@@ -36,6 +37,12 @@ export default function OfficeLayout({ children }: { children: React.ReactNode }
       .catch(() => router.replace("/login"));
   }, [router]);
 
+  // The office colours (globals.css .office-theme) on <html>, so dialogs get them too.
+  React.useEffect(() => {
+    document.documentElement.classList.add("office-theme");
+    return () => document.documentElement.classList.remove("office-theme");
+  }, []);
+
   const signOut = () => {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user");
@@ -51,11 +58,12 @@ export default function OfficeLayout({ children }: { children: React.ReactNode }
   }
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="light" storageKey="office-theme" enableSystem={false} disableTransitionOnChange>
       <OfficeContextProvider value={me.office}>
         <SidebarProvider>
           <OfficeSidebar person={me} onSignOut={signOut} />
           <SidebarInset>
+            <FlagStripe />
             <header className="flex h-12 items-center gap-2 border-b px-4 lg:hidden">
               <SidebarTrigger />
               <span className="text-sm font-semibold truncate">{me.office.officeName}</span>

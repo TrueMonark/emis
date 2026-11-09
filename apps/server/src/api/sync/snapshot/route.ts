@@ -10,7 +10,7 @@ import { phoneSyncService } from "@/features/sync/sync.service";
  */
 export const GET = withAuth(async (_request: Request, user) => {
   try {
-    return ApiResponse.success(await phoneSyncService.snapshot(user.userId));
+    return ApiResponse.success(await phoneSyncService.snapshot(user.userId, user.role));
   } catch (error) {
     return handleApiError(error, { userId: user.userId, endpoint: "GET /api/sync/snapshot" });
   }

@@ -75,7 +75,8 @@ instead of a separate `apps/office`). The school's first-time setup wizard is `a
   catalogue_subjects and pathways (read-only for the app), role_permissions, ECZ grading
   schemes. `teacher_profiles` belongs to the
   person: a school sees the profiles of its current and former members. Phase 7 adds
-  school_facilities, return_rounds, school_returns and school_return_events (figures only).
+  school_facilities, return_rounds, school_returns and school_return_events (figures only);
+  Phase 8 adds announcements, announcement_attachments and announcement_reads.
 - **A new school-owned model** needs: `schoolId String @default(dbgenerated("current_setting('app.school_id'::text, true)"))`
   plus the `school` relation and `@@index([schoolId])`; uniques made per school
   (`@@unique([schoolId, code])`); and, in its migration, `ENABLE ROW LEVEL SECURITY` with the
@@ -168,6 +169,10 @@ instead of a separate `apps/office`). The school's first-time setup wizard is `a
   = a new operation in `sync.operations.ts` first, then `ops.ts`. Never add phone-only REST routes.
 - Local data: SQLite (`src/db.ts`); secrets (token, PIN hash, device id) in secure storage
   (`src/storage.ts`). Learner fields on the phone are whatever `syncRecords.repository.ts` sends.
+- **Announcements on the phone** (Phase 9c): the sync snapshot/changes carry an `announcements`
+  list (like `calendar`, built by `announcementService.inbox`), kept in `meta`; opening and
+  acknowledging are the `announcement.read` / `announcement.acknowledge` operations. Attachments
+  are not sent to phones.
 
 ## Public holidays, school closures and marks history (Phase 5b, since 2026-10-21)
 
@@ -213,6 +218,49 @@ instead of a separate `apps/office`). The school's first-time setup wizard is `a
   line in one transaction), so two people pressing at once can't both win. The history
   (`school_return_events`) is insert-only for the app, and returns and rounds are never deleted.
   `school_returns` and `return_rounds` are national tables (figures only), like `schools`.
+
+## Announcements (Phase 8, since 2026-11-02)
+
+- **Circulars from an office** (`features/announcements/`): HQ, a PEO or a DEBS (the office
+  head only) posts to every active school in its area, to `LEADERS` (head/deputy) or
+  `ALL_STAFF`, optionally asking each school's head/deputy to acknowledge. Never edited once
+  posted; the posting office's head can withdraw it with a reason. National tables
+  (`announcements`, `announcement_attachments`, `announcement_reads`); who sees what is
+  decided in `announcement.service.ts` only.
+- **Which offices reach whom** is `officeService.messageOfficeIdsFor(ctx)` (an office's area
+  plus the offices above it), `messageOfficeIdsForSchool(schoolId)` (district, province, HQ)
+  and `schoolsUnderOfficeWhere(office)`. Returns use the same three; don't write another copy.
+- **Attachments are private files** (`lib/files/private-files.ts`, `PRIVATE_FILES_DIR`, never
+  served statically): PDF/PNG/JPEG checked by their first bytes, at most 5 and 9 MB together,
+  stored under a random key. They are sent only by `/api/announcements/[id]/attachments/*`
+  (recipients) and `/api/office/announcements/[id]/attachments/*` (offices that see it), with
+  `fileResponse` (`lib/http/file-response.ts`). Never put them in `uploads/`.
+- Read receipts are one row per person (`announcement_reads`); a school counts as "opened" when
+  anyone there opened it, "acknowledged" when its head or deputy pressed Acknowledge.
+  `/api/announcements` is in `FINANCE_ALLOWED_PREFIXES` (all-staff announcements reach
+  finance staff).
+
+## SBA score sheets (Phase 9b, since 2026-11-04)
+
+- **School Based Assessment** (`features/sba/`, rules in `@school/shared/sba/sba`): each teacher
+  keeps **their own sheet per subject and class** they teach (an active `SubjectTeacherAssignment`)
+  in classes where `hasSba(grade)` (2023-curriculum O-level), per academic year. Six tasks (two
+  per term, `sbaTermOf`), each marked out of what the teacher sets (`maxMarks`, adjustable until
+  the HOD approves; can't drop below a mark already given). Marks: number or absent; totals via
+  `sbaTotal` (absent = 0 but counts towards "out of").
+- **Sign-off:** DRAFT → (teacher submits; every learner needs a mark/absent for every task)
+  SUBMITTED → HOD of the subject's department (or the head/deputy; nobody approves their own)
+  approves → HOD_APPROVED or sends back → RETURNED; head/deputy confirms → CONFIRMED, and can
+  reopen. All status changes go through `sbaRepository.transition` (conditional update + history
+  line); mark saves lock the sheet row (`saveEntries`). `sba_sheet_events` is insert-only.
+- School-owned tables with RLS (`sba_sheets`, `sba_tasks`, `sba_marks`, `sba_learner_notes`,
+  `sba_sheet_events`). Offices get **progress counts only** from the SECURITY DEFINER
+  `emis_sba_progress` (expected = active assignments in SBA classes). Never send marks above the
+  school.
+- The printout (`app/(sba-print)/sba/print/[id]`) follows the ECZ score sheet layout: last
+  year's sheet in the same subject (`findEarlierSheets`, by subject or catalogue subject) beside
+  this year's, totals, comments, signature lines. **No ECZ logo or coat of arms** on it.
+  `School.eczCentreCode` is set on the School profile page.
 
 ## School fees (since 2026-10-19)
 
@@ -485,7 +533,8 @@ building and testing that separate build step end-to-end against a real producti
 Uploads (the school logo today) are written by the server to `UPLOADS_DIR` (default `uploads/` in
 the folder the server starts from; `/server.js` sets `apps/server/uploads`) and served publicly at
 `/uploads/<file>` — see `src/lib/files/uploads.ts`. Never write into a Next.js `public/` folder from
-the server, and never put anything private in the uploads folder.
+the server, and never put anything private in the uploads folder. Private files (announcement
+attachments) go in `PRIVATE_FILES_DIR` via `src/lib/files/private-files.ts` (Phase 8).
 
 ## Offline support (removed, 2026-08-10)
 

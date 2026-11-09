@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { NavMain } from "@/components/layout/nav-main";
+import { NavMain, withBadge, type NavGroup } from "@/components/layout/nav-main";
+import { useAnnouncementCounts } from "@/hooks/useAnnouncementCounts";
 import {
   BookOpen,
   GraduationCap,
@@ -23,6 +24,8 @@ import {
   Wallet,
   Landmark,
   ClipboardCheck,
+  Megaphone,
+  ScrollText,
 } from "lucide-react";
 import {
   Sidebar,
@@ -45,7 +48,7 @@ interface SidebarComponentProps extends React.ComponentProps<typeof Sidebar> {
   };
 }
 
-const navGroups = [
+const navGroups: NavGroup[] = [
   {
     label: "Overview",
     items: [
@@ -144,6 +147,11 @@ const navGroups = [
         icon: ClipboardList,
       },
       {
+        title: "SBA score sheets",
+        url: "/admin/sba",
+        icon: ScrollText,
+      },
+      {
         title: "School Statistics",
         url: "/admin/school-statistics",
         icon: BarChart3,
@@ -163,6 +171,11 @@ const navGroups = [
   {
     label: "Education office",
     items: [
+      {
+        title: "Announcements",
+        url: "/admin/announcements",
+        icon: Megaphone,
+      },
       {
         title: "School profile",
         url: "/admin/school-profile",
@@ -185,6 +198,7 @@ const feesGroup = {
 
 export function SidebarComponent({ user, ...props }: SidebarComponentProps) {
   const showFees = useFeesLink();
+  const { attention } = useAnnouncementCounts();
   const formatRole = (role: string) => {
     return role
       .split("_")
@@ -210,7 +224,7 @@ export function SidebarComponent({ user, ...props }: SidebarComponentProps) {
         <SidebarHeaderContent />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain groups={showFees ? [...navGroups, feesGroup] : navGroups} />
+        <NavMain groups={withBadge(showFees ? [...navGroups, feesGroup] : navGroups, "/admin/announcements", attention)} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />

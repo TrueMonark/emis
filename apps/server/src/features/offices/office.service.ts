@@ -77,6 +77,55 @@ export class OfficeService {
     return { districtOfficeId: ctx.office.officeId };
   }
 
+  /** Every active school under an office (what a return round or announcement from it reaches). */
+  schoolsUnderOfficeWhere(office: { id: string; type: EducationOfficeType | string }): Prisma.SchoolWhereInput {
+    if (office.type === "HQ") return {};
+    if (office.type === "PROVINCIAL") return { districtOffice: { parentId: office.id } };
+    return { districtOfficeId: office.id };
+  }
+
+  /**
+   * Offices whose rounds and announcements this office sees: those in its area (all for HQ) and
+   * those above it (whose messages reach its schools).
+   */
+  async messageOfficeIdsFor(ctx: OfficeContext): Promise<string[] | "ALL"> {
+    const inScope = await this.officeIdsInScope(ctx);
+    if (inScope === "ALL") return "ALL";
+    const above: string[] = [];
+    let id: string | null = ctx.office.officeId;
+    while (id && above.length < 5) {
+      above.push(id);
+      const office: { parentId: string | null } | null = await prisma.educationOffice.findUnique({
+        where: { id },
+        select: { parentId: true },
+      });
+      id = office?.parentId ?? null;
+    }
+    return [...new Set([...inScope, ...above])];
+  }
+
+  /** Offices whose rounds and announcements reach a school: its district, its province, HQ. */
+  async messageOfficeIdsForSchool(schoolId: string): Promise<string[]> {
+    const school = await prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { districtOfficeId: true, districtOffice: { select: { parentId: true } } },
+    });
+    if (!school) throw new NotFoundError("School not found");
+    const hq = await prisma.educationOffice.findMany({ where: { type: "HQ" }, select: { id: true } });
+    return [
+      ...new Set([school.districtOfficeId, ...(school.districtOffice.parentId ? [school.districtOffice.parentId] : []), ...hq.map((o) => o.id)]),
+    ];
+  }
+
+  /** Active schools in this office's area, with their district (for progress tables). */
+  schoolsInScopeForProgress(ctx: OfficeContext) {
+    return prisma.school.findMany({
+      where: { ...this.schoolWhere(ctx), status: "ACTIVE" },
+      select: { id: true, name: true, districtOffice: { select: { name: true } } },
+      orderBy: [{ districtOffice: { name: "asc" } }, { name: "asc" }],
+    });
+  }
+
   /** Whether the school is in this office's area (its district, province, or anywhere for HQ). */
   async isSchoolInScope(ctx: OfficeContext, schoolId: string): Promise<boolean> {
     return (await prisma.school.count({ where: { id: schoolId, ...this.schoolWhere(ctx) } })) > 0;

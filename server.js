@@ -26,6 +26,7 @@ const schoolDir = path.join(__dirname, "apps", "school");
 // Server settings (DATABASE_URL, JWT_SECRET, SMS keys…) live in apps/server/.env.
 dotenv.config({ path: path.join(serverDir, ".env"), quiet: true });
 process.env.UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(serverDir, "uploads");
+process.env.PRIVATE_FILES_DIR = process.env.PRIVATE_FILES_DIR || path.join(serverDir, "private-files");
 
 const hostname = process.env.HOST || "0.0.0.0";
 const port = parseInt(process.env.PORT || "3000", 10);

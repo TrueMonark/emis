@@ -88,6 +88,8 @@ The first download, and again whenever the phone is told to resync.
 | `specialClass.register` | specialClassId, records [{ studentId, status, remarks? }] | Only the teacher who asked for the weekend class (or the head/deputy), only once approved, on or after its day. |
 | `marks.enter` | assessmentId, results [{ studentId, marksObtained, isAbsent?, remarks?, baseVersion? }] | Refused once the assessment is COMPLETED or its entry window has closed; otherwise as the web. **Conflicts (Phase 5b):** same rule as attendance — a mark changed on the server after `madeAt` (and after `baseVersion`) is kept, listed in `result.conflicts` (with the server's mark), and written to the marks history as "not applied". Every applied mark is in the history with source PHONE. |
 | `lessonLog.save` | timetableSlotId, date, topic, subtopics? | Own period on its own weekday (as the web). |
+| `announcement.read` | announcementId | One that reaches this person (Phase 9c). Recorded once. |
+| `announcement.acknowledge` | announcementId | Head teacher or deputy only, when the office asked for it and it isn't withdrawn (Phase 9c). |
 
 Anything else is rejected: unknown type, invalid payload, or a refusal by the service. The
 reason is in `error`, ready to show to the teacher.
@@ -106,3 +108,10 @@ public holidays (`PUBLIC_HOLIDAY`, the national list after HQ's changes) and the
 closure days (`SCHOOL_CLOSURE`) from a month ago to four months ahead. Weekends are not listed.
 The phone should refuse to start a daily or period register on those days (the server refuses it
 anyway) and offer only special classes. Replace the whole list on every pull.
+
+Snapshots and pulls also carry `announcements` (Phase 9c): the latest 50 that reach the person
+(the same list as the website's Announcements page), each with `id, title, body, audience,
+requiresAck, office { name, type }, publishedAt, withdrawnAt, withdrawReason,
+attachments [{ fileName, sizeBytes }], readAt, schoolAcknowledged, canAcknowledge`. Replace the
+whole list on every pull. Attachments are named only: they are private files, opened on the
+website.

@@ -1,7 +1,7 @@
 import { isWeekend } from "@school/shared/calendar/weekend";
 import { all, one, pendingWithPrefix, where, type Row } from "./db";
 import { dayKeyOf, dayOf, type DayKey } from "./dates";
-import { me, nonSchoolDays } from "./sync";
+import { me, nonSchoolDays, storedAnnouncements, type PhoneAnnouncement } from "./sync";
 
 /**
  * What the screens show, read from the phone's database: the server's rows with the phone's
@@ -202,3 +202,31 @@ export function specialMarks(specialClassId: string): Map<string, Mark> {
   for (const [key, value] of pendingWithPrefix<Mark>(prefix)) out.set(key.slice(prefix.length), { ...value, waiting: true });
   return out;
 }
+
+// ── Announcements (Phase 9c) ───────────────────────────────────────────────
+
+export const announcementReadKey = (id: string) => `ann-read|${id}`;
+export const announcementAckKey = (id: string) => `ann-ack|${id}`;
+
+/**
+ * Announcements as the phone knows them: what the last sync brought, plus what was opened or
+ * acknowledged here and not sent yet.
+ */
+export function announcements(): (PhoneAnnouncement & { ackWaiting: boolean })[] {
+  const read = pendingWithPrefix<{ at: string }>("ann-read|");
+  const acked = pendingWithPrefix<{ at: string }>("ann-ack|");
+  return storedAnnouncements().map((a) => {
+    const localRead = read.get(announcementReadKey(a.id));
+    const localAck = acked.get(announcementAckKey(a.id));
+    return {
+      ...a,
+      readAt: a.readAt ?? localRead?.at ?? localAck?.at ?? null,
+      canAcknowledge: a.canAcknowledge && !localAck,
+      ackWaiting: !!localAck && !a.schoolAcknowledged,
+    };
+  });
+}
+
+/** Unread, plus still to acknowledge (each counted once). */
+export const announcementsWaiting = () =>
+  announcements().filter((a) => (!a.readAt && !a.withdrawnAt) || a.canAcknowledge).length;

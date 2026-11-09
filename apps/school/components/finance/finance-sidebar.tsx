@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, BadgePercent, FileBarChart, Home, LogOut, Receipt, ReceiptText, UserCog, Users } from "lucide-react";
+import { ArrowLeft, BadgePercent, Megaphone, FileBarChart, Home, LogOut, Receipt, ReceiptText, UserCog, Users } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -11,10 +11,12 @@ import {
   SidebarMenuItem,
 } from "@school/ui/components/sidebar";
 import { NavMain, type NavGroup } from "@/components/layout/nav-main";
+import { useAnnouncementCounts } from "@/hooks/useAnnouncementCounts";
 import type { FinancePerson } from "./finance-context";
 
 /** Sidebar of the school fees pages (finance staff; the head teacher and deputy read-only). */
 export function FinanceSidebar({ person, onSignOut }: { person: FinancePerson; onSignOut: () => void }) {
+  const { attention } = useAnnouncementCounts();
   const groups: NavGroup[] = [
     {
       label: "School fees",
@@ -26,6 +28,7 @@ export function FinanceSidebar({ person, onSignOut }: { person: FinancePerson; o
         { title: "Discounts & bursaries", url: "/finance/discounts", icon: BadgePercent },
         { title: "Reports", url: "/finance/reports", icon: FileBarChart },
         ...(person.isLeader ? [{ title: "Finance staff", url: "/finance/staff", icon: UserCog }] : []),
+        { title: "Announcements", url: "/finance/announcements", icon: Megaphone, badge: attention },
       ],
     },
   ];

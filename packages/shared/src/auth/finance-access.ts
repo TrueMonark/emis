@@ -8,6 +8,7 @@ export const FINANCE_ALLOWED_PREFIXES = [
   "/api/auth/",
   "/api/school/identity",
   "/api/notifications",
+  "/api/announcements",
 ] as const;
 
 export function isAllowedForFinance(path: string): boolean {

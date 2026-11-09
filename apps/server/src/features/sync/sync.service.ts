@@ -15,6 +15,7 @@ import { syncOperationRepository } from "./syncOperation.repository";
 import { OPERATION_TYPES, OperationRejected, runOperation } from "./sync.operations";
 import { currentTenant, runWithTenant } from "@/lib/db/tenant";
 import { calendarService } from "@/features/calendar/calendar.service";
+import { announcementService } from "@/features/announcements/announcement.service";
 
 /** How many days a phone may work offline before it must connect once (a national setting). */
 export function offlineDays(): number {
@@ -113,7 +114,7 @@ export class PhoneSyncService {
     return teacher;
   }
 
-  async snapshot(userId: string) {
+  async snapshot(userId: string, role: string) {
     const teacher = await this.me(userId);
     // The cursor is taken first: anything that changes while the rows are read is sent again by
     // the next pull (the phone simply overwrites it), so nothing falls in between.
@@ -130,11 +131,12 @@ export class PhoneSyncService {
       settings: { offlineDays: offlineDays() },
       me: { userId, teacherProfileId: teacher.id, name: `${teacher.firstName} ${teacher.lastName}` },
       calendar: await this.calendar(),
+      announcements: await this.announcements(userId, role),
       data,
     };
   }
 
-  async changes(userId: string, cursorText: string | null, scopeFingerprint: string | null, limit = 500) {
+  async changes(userId: string, role: string, cursorText: string | null, scopeFingerprint: string | null, limit = 500) {
     const teacher = await this.me(userId);
     if (!decodeCursor(cursorText)) {
       return { resyncRequired: true as const, reason: "No valid cursor: take a snapshot first" };
@@ -203,7 +205,33 @@ export class PhoneSyncService {
       hasMore: page.hasMore,
       scope: scope.fingerprint,
       calendar: await this.calendar(),
+      announcements: await this.announcements(userId, role),
     };
+  }
+
+  /**
+   * Announcements from the offices that reach this person (Phase 9c): the latest 50, sent whole
+   * with every snapshot and pull, like the calendar, so the phone can show them offline. Opening
+   * and acknowledging are sync operations. Attachments are listed by name only: they're private
+   * files, opened on the website.
+   */
+  private async announcements(userId: string, role: string) {
+    const inbox = await announcementService.inbox({ userId, role });
+    return inbox.announcements.slice(0, 50).map((a) => ({
+      id: a.id,
+      title: a.title,
+      body: a.body,
+      audience: a.audience,
+      requiresAck: a.requiresAck,
+      office: { name: a.office.name, type: a.office.type },
+      publishedAt: a.publishedAt,
+      withdrawnAt: a.withdrawnAt,
+      withdrawReason: a.withdrawReason,
+      attachments: a.attachments.map((f) => ({ fileName: f.fileName, sizeBytes: f.sizeBytes })),
+      readAt: a.readAt,
+      schoolAcknowledged: a.schoolAcknowledged,
+      canAcknowledge: a.canAcknowledge,
+    }));
   }
 
   /**

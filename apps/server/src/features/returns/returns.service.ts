@@ -27,13 +27,6 @@ const ymd = (d: Date) => d.toISOString().slice(0, 10);
 const asDate = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 const EDITABLE: SchoolReturnStatus[] = ["DRAFT", "RETURNED"];
 
-/** Schools a round goes to: every active school under the office that opened it. */
-function roundSchoolWhere(office: { id: string; type: string }): Prisma.SchoolWhereInput {
-  if (office.type === "HQ") return {};
-  if (office.type === "PROVINCIAL") return { districtOffice: { parentId: office.id } };
-  return { districtOfficeId: office.id };
-}
-
 function presentRound(r: RoundRow) {
   return {
     id: r.id,
@@ -72,27 +65,9 @@ function countStatuses(statuses: ReturnStatusValue[]) {
 export class ReturnsService {
   // ── Offices ───────────────────────────────────────────────────────────────────────────
 
-  /** The caller's office and the offices above it (whose rounds reach the caller's schools). */
-  private async officeAndAncestors(officeId: string): Promise<string[]> {
-    const ids: string[] = [];
-    let id: string | null = officeId;
-    while (id && ids.length < 5) {
-      ids.push(id);
-      const office: { parentId: string | null } | null = await returnsRepository.findOffice(id);
-      id = office?.parentId ?? null;
-    }
-    return ids;
-  }
-
-  private async visibleRoundOfficeIds(ctx: OfficeContext): Promise<string[] | "ALL"> {
-    const inScope = await officeService.officeIdsInScope(ctx);
-    if (inScope === "ALL") return "ALL";
-    return [...new Set([...inScope, ...(await this.officeAndAncestors(ctx.office.officeId))])];
-  }
-
   private async requireVisibleRound(ctx: OfficeContext, roundId: string) {
     const round = await returnsRepository.findRound(roundId);
-    const visible = await this.visibleRoundOfficeIds(ctx);
+    const visible = await officeService.messageOfficeIdsFor(ctx);
     if (!round || (visible !== "ALL" && !visible.includes(round.officeId))) throw new NotFoundError("Return not found");
     return round;
   }
@@ -100,12 +75,12 @@ export class ReturnsService {
   /** Schools that answer this round and that the caller may see. */
   private roundSchoolsFor(ctx: OfficeContext, round: RoundRow, within?: Prisma.SchoolWhereInput) {
     return returnsRepository.findSchools({
-      AND: [roundSchoolWhere(round.office), officeService.schoolWhere(ctx), ...(within ? [within] : [])],
+      AND: [officeService.schoolsUnderOfficeWhere(round.office), officeService.schoolWhere(ctx), ...(within ? [within] : [])],
     });
   }
 
   async listRounds(ctx: OfficeContext) {
-    const rounds = await returnsRepository.findRounds(await this.visibleRoundOfficeIds(ctx));
+    const rounds = await returnsRepository.findRounds(await officeService.messageOfficeIdsFor(ctx));
     const out = [];
     for (const r of rounds) {
       const schools = await this.roundSchoolsFor(ctx, r);
@@ -177,7 +152,7 @@ export class ReturnsService {
     const target = await returnsRepository.findOffice(targetId);
     if (!target) throw new NotFoundError("Office not found");
 
-    const schools = await this.roundSchoolsFor(ctx, round, roundSchoolWhere(target));
+    const schools = await this.roundSchoolsFor(ctx, round, officeService.schoolsUnderOfficeWhere(target));
     const returns = await returnsRepository.findReturnsForRound(round.id, schools.map((s) => s.id));
     const bySchool = new Map(returns.map((r) => [r.schoolId, r]));
     const statusOf = (id: string) => (bySchool.get(id)?.status as ReturnStatusValue | undefined) ?? "NOT_STARTED";
@@ -309,19 +284,10 @@ export class ReturnsService {
     if (!isSchoolLeader(ctx.role)) throw new ForbiddenError("Returns are for the head teacher and deputy");
   }
 
-  /** Offices whose rounds reach this school: its district, its province, HQ. */
-  private async roundOfficesForSchool(schoolId: string) {
-    const school = await returnsRepository.findSchoolDistrict(schoolId);
-    if (!school) throw new NotFoundError("School not found");
-    const ids = [school.districtOfficeId];
-    if (school.districtOffice.parentId) ids.push(school.districtOffice.parentId);
-    return [...new Set([...ids, ...(await returnsRepository.findHqIds())])];
-  }
-
   private async requireSchoolRound(roundId: string) {
     const schoolId = requireSchoolId();
     const round = await returnsRepository.findRound(roundId);
-    if (!round || !(await this.roundOfficesForSchool(schoolId)).includes(round.officeId)) {
+    if (!round || !(await officeService.messageOfficeIdsForSchool(schoolId)).includes(round.officeId)) {
       throw new NotFoundError("Return not found");
     }
     return { schoolId, round };
@@ -330,7 +296,7 @@ export class ReturnsService {
   async schoolRounds(ctx: SchoolCtx) {
     this.requireLeader(ctx);
     const schoolId = requireSchoolId();
-    const rounds = await returnsRepository.findRounds(await this.roundOfficesForSchool(schoolId));
+    const rounds = await returnsRepository.findRounds(await officeService.messageOfficeIdsForSchool(schoolId));
     const mine = await returnsRepository.findSchoolReturns(schoolId, rounds.map((r) => r.id));
     const byRound = new Map(mine.map((m) => [m.roundId, m]));
     return rounds.map((r) => {

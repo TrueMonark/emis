@@ -7,6 +7,7 @@ import { outbox, pendingCount } from "../../src/db";
 import { useSyncState } from "../../src/sync";
 import { dayKeyOf, dayLabel, todayIso } from "../../src/dates";
 import {
+  announcementsWaiting,
   learnersOf,
   lessonLog,
   myAssessments,
@@ -63,6 +64,7 @@ export default function Home() {
       specialWaiting,
       waiting: pendingCount(),
       rejected,
+      notices: announcementsWaiting(),
     };
   }, [today]);
 
@@ -111,6 +113,14 @@ export default function Home() {
             tone={d.rejected ? "red" : d.waiting ? "amber" : "green"}
             hint={d.rejected ? `${d.rejected} refused — tap to see why` : d.waiting ? "Sent when there's signal" : "Everything sent"}
             onPress={() => router.push("/sync")}
+          />
+          <StatCard
+            icon="megaphone"
+            label="Announcements"
+            value={d.notices}
+            tone={d.notices ? "amber" : "green"}
+            hint={d.notices ? "Unread or to acknowledge" : "All read"}
+            onPress={() => router.push("/announcements")}
           />
           <StatCard icon="people" label="My classes" value={d.classes} hint={`${d.learners} learners`} onPress={() => router.push("/classes")} />
           <StatCard

@@ -2,13 +2,14 @@ import { router } from "expo-router";
 import { useLocal } from "../../src/events";
 import { useSession } from "../../src/session";
 import { lastSyncAt, offlineDays, pendingCount } from "../../src/sync";
+import { announcementsWaiting } from "../../src/queries";
 import { dateTimeLabel } from "../../src/dates";
 import { confirmSignOut } from "../../src/screens/auth";
 import { Button, Card, Label, Muted, Row, Screen } from "../../src/ui";
 
 export default function More() {
   const { session, signOut } = useSession();
-  const info = useLocal(() => ({ last: lastSyncAt(), days: offlineDays(), waiting: pendingCount() }));
+  const info = useLocal(() => ({ last: lastSyncAt(), days: offlineDays(), waiting: pendingCount(), notices: announcementsWaiting() }));
   return (
     <Screen>
       <Card style={{ gap: 4 }}>
@@ -18,6 +19,11 @@ export default function More() {
       </Card>
       <Card>
         <Row title="Sync" sub={`Last synced ${dateTimeLabel(info.last)} · ${info.waiting} waiting`} onPress={() => router.push("/sync")} />
+        <Row
+          title="Announcements"
+          sub={info.notices ? `${info.notices} unread or to acknowledge` : "From the DEBS, PEO and HQ"}
+          onPress={() => router.push("/announcements")}
+        />
         <Row title="My classes" onPress={() => router.push("/classes")} />
         <Row title="Special classes" onPress={() => router.push("/special-classes")} />
         <Row title="Reminders & appearance" sub="Lesson alarms, register reminders, light or dark" onPress={() => router.push("/settings")} />

@@ -13,7 +13,7 @@ export const GET = withAuth(async (request: Request, user) => {
     const q = new URL(request.url).searchParams;
     const limit = Number(q.get("limit") ?? 500);
     return ApiResponse.success(
-      await phoneSyncService.changes(user.userId, q.get("cursor"), q.get("scope"), Number.isFinite(limit) ? limit : 500)
+      await phoneSyncService.changes(user.userId, user.role, q.get("cursor"), q.get("scope"), Number.isFinite(limit) ? limit : 500)
     );
   } catch (error) {
     return handleApiError(error, { userId: user.userId, endpoint: "GET /api/sync/changes" });

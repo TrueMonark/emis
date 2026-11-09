@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightLeft, BarChart3, Building2, CalendarDays, ClipboardCheck, FileClock, Home, KeyRound, LogOut, School } from "lucide-react";
+import { ArrowRightLeft, BarChart3, Building2, CalendarDays, ClipboardCheck, FileClock, Home, KeyRound, LogOut, Megaphone, School, ScrollText } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -11,6 +11,7 @@ import {
   SidebarMenuItem,
 } from "@school/ui/components/sidebar";
 import { NavMain, type NavGroup } from "@/components/layout/nav-main";
+import { FlagStripe } from "./flag-stripe";
 import { OFFICE_SHORT, roleLabel, type OfficeRole, type OfficeType } from "./office-labels";
 
 export interface OfficePerson {
@@ -26,6 +27,8 @@ const groups: NavGroup[] = [
       { title: "Overview", url: "/office", icon: Home },
       { title: "School profiles", url: "/office/profiles", icon: BarChart3 },
       { title: "Returns", url: "/office/returns", icon: ClipboardCheck },
+      { title: "Announcements", url: "/office/announcements", icon: Megaphone },
+      { title: "SBA progress", url: "/office/sba", icon: ScrollText },
       { title: "Schools", url: "/office/schools", icon: School },
       { title: "Offices & accounts", url: "/office/offices", icon: Building2 },
       { title: "Requests", url: "/office/requests", icon: KeyRound },
@@ -60,6 +63,7 @@ export function OfficeSidebar({ person, onSignOut }: { person: OfficePerson; onS
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
+      <FlagStripe className="h-0.5 opacity-80" />
       <SidebarContent>
         <NavMain groups={groups} />
       </SidebarContent>

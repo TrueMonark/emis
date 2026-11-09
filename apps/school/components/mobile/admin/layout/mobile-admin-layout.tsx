@@ -26,6 +26,8 @@ const PAGE_TITLES: Record<string, string> = {
   "/admin/calendar":                "School calendar",
   "/admin/school-profile":          "School profile",
   "/admin/returns":                 "Returns",
+  "/admin/announcements":           "Announcements",
+  "/admin/sba":                     "SBA score sheets",
   "/admin/assessments":             "Assessments",
   "/admin/attendance":              "Attendance",
   "/admin/attendance/analytics":    "Attendance Analytics",

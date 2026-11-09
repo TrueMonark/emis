@@ -117,6 +117,44 @@
   --sidebar-ring: oklch(0.41 0.159 10.272);
 }
 
+/* Education office pages (DEBS, PEO, HQ; Phase 9a): bright, with the colours of the Zambian
+   flag as accents. Set on <html> by app/(office)/layout.tsx, so dialogs (which render outside
+   the page) get the same colours. Light by default. */
+.office-theme {
+  --zm-green: #198a00;
+  --zm-red: #de2010;
+  --zm-black: #1a1a1a;
+  --zm-orange: #ef7d00;
+  --primary: #198a00;
+  --primary-foreground: #ffffff;
+  --ring: #198a00;
+  --chart-1: #198a00;
+  --background: #fbfcf9;
+  --sidebar: #ffffff;
+  --sidebar-primary: #198a00;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e9f5e4;
+  --sidebar-accent-foreground: #0f5200;
+  --sidebar-ring: #198a00;
+}
+.office-theme.dark {
+  --zm-green: #3fae2a;
+  --zm-red: #f0533f;
+  --zm-black: #e8e8e6;
+  --zm-orange: #f59a2e;
+  --primary: #3fae2a;
+  --primary-foreground: #0b1a07;
+  --ring: #3fae2a;
+  --chart-1: #3fae2a;
+  --background: oklch(0.141 0.005 285.823);
+  --sidebar: oklch(0.21 0.006 285.885);
+  --sidebar-primary: #3fae2a;
+  --sidebar-primary-foreground: #0b1a07;
+  --sidebar-accent: #17301a;
+  --sidebar-accent-foreground: #d6f2cf;
+  --sidebar-ring: #3fae2a;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

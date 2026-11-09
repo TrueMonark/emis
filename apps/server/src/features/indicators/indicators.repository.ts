@@ -110,7 +110,7 @@ export class IndicatorsRepository {
   }
 
   findSchool(id: string) {
-    return prisma.school.findUnique({ where: { id }, select: { ...schoolSelect, agency: true, status: true } });
+    return prisma.school.findUnique({ where: { id }, select: { ...schoolSelect, agency: true, status: true, eczCentreCode: true } });
   }
 
   findOffice(id: string) {

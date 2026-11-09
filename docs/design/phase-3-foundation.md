@@ -319,7 +319,11 @@ come next (§8).
 | **5** ✅ built 18 October 2026 (`docs/phases/phase-5-checklist.md`, reference `docs/design/sync-api.md`; with weekend classes) | Sync API: pull changes, push operations, conflict and idempotency handling | Tests: offline edits sync; conflicts and resends behave as specified |
 | **6** ✅ built 22 October 2026 (`docs/phases/phase-6-checklist.md`, `apps/mobile`) | Teacher mobile app (React Native / Expo, shares `packages/shared`): sign in, pick school, timetable, attendance, marks, all offline | A teacher marks attendance with no signal, and it syncs later |
 | **7** ✅ built 31 October 2026 (`docs/phases/phase-7-checklist.md`) | DEBS/PEO/HQ School profile dashboards (counts only, by province, district and school, compared with the district), school facilities, returns: office opens a round → head drafts from the records and submits → the school's DEBS approves or sends back; PEO/HQ see the approved totals | A DEBS approves a return that was sent back and corrected, and the PEO sees its figures in the province's totals |
-| **8+** | Announcements (circulars from the offices), ECZ results import for the School Profile, offline for the web app, official form layouts once the blank census form is available | — |
+| **8** ✅ built 2 November 2026 (`docs/phases/phase-8-checklist.md`) | Announcements: circulars from HQ/PEO/DEBS to their schools' leaders or all staff, private PDF/image attachments, read receipts per school, optional acknowledgement, withdraw | A DEBS sees which schools haven't acknowledged a circular |
+| **9a** ✅ built 4 November 2026 (`docs/phases/phase-9a-checklist.md`) | Office pages in bright colours with Zambian flag accents; Overview as a statistics page | — |
+| **9b** ✅ built 4 November 2026 (`docs/phases/phase-9b-checklist.md`) | SBA score sheets: teacher's own sheet per subject and class, six tasks, teacher → HOD → head, ECZ-layout printout, progress counts for offices | A teacher's sheet is sent back, corrected, approved, confirmed and printed |
+| **9c** ✅ built 4 November 2026 (`docs/phases/phase-9c-checklist.md`) | Announcements on the teacher phone app: delivered with sync, readable offline, opened/acknowledged as sync operations | A teacher reads a circular offline and the office sees it opened after the next sync |
+| **10+** | ECZ results import, offline for the web app, official census form layout, SMS/email alerts for announcements | — |
 
 Each phase: a zip, its migrations, a checklist, and all tests passing.
 
